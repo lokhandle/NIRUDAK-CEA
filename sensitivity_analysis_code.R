@@ -298,16 +298,16 @@ for (i in 1:length(prob_die_gvn_undertreat_grid)) {
   }
 }
 
+# M_twoway_ICER[1:10, 1:10]
 
-M_twoway_ICER[1:10, 1:10]
-
-max(M_twoway_ICER)
+# max(M_twoway_ICER)
 
 # setting (as of Jul 24, arbitrary) WTP threshold
 WTP = 10
 
 # nondominated_overtreat_index <- which(M_twoway_ICER[30,] > 0)
 
+# two_way_sense_fxn is a function that ultimately generates the two-way sensitivity plot
 two_way_sense_fxn <- function (WTP, doplot=TRUE){
   
   threshold_probs <- matrix(NA, length(prob_die_gvn_undertreat_grid), 2)
@@ -328,8 +328,7 @@ two_way_sense_fxn <- function (WTP, doplot=TRUE){
   return(threshold_probs)
 }
 
-
-
+# example
 WTP80_2waysense_result <- two_way_sense_fxn(80)
 
 ################################################################################
