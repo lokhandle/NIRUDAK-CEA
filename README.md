@@ -1,12 +1,12 @@
 # NIRUDAK cost-effectiveness analysis
 
-### Methods
+## Methods
 
 Figure 1: Decision tree
 
 Table 1: Costs (maybe in Appendix)
 
-### Results
+## Results
 
 Table 2: Patient demographics
 
