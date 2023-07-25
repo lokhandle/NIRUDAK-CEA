@@ -1,14 +1,12 @@
 # NIRUDAK cost-effectiveness analysis
 
-This project quantifies the cost-effectiveness of the NIRUDAK model for fluid resuscitation in low-resource settings. 
-
-Methods
+### Methods
 
 Figure 1: Decision tree
 
 Table 1: Costs (maybe in Appendix)
 
-Results
+### Results
 
 Table 2: Patient demographics
 
