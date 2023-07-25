@@ -268,6 +268,8 @@ abline(v=prob_die_gvn_overtreat_grid[max(nondominated_overtreat_index)], lty = 1
 
 ################################################################################
 # TWO WAY SENSITIVITY ANALYSIS (probability of death from overtreatment AND from undertreatment)
+# in this analysis, neither the probability of death from undertreatment and death from overtreatment
+# are held constant
 
 M_twoway_ICER <- M_twoway_inc_costs <- M_twoway_inc_DALYs_averted <-  M_twoway_WHO_costs <- 
   M_twoway_WHO_DALYs_averted <-
