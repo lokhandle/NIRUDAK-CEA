@@ -64,7 +64,7 @@ gen daily_wage = (MonthlyIncome/30)
 * wage lost to hospital stay
 gen wage_lost_hospital_stay = daily_wage * length_stay
 
-* converting lost wages from BDT to USD using purchasing power parity (PPP)
+* converting lost wages from BDT to USD using purchasing power parity (PPP) from the World Bank
 gen wage_lost_hospital_stay_usd = wage_lost_hospital_stay * 0.031
 
 * total cost variable: NIRUDAK_irr_cost_bdt2 & WHO_irr_cost_bdt2
