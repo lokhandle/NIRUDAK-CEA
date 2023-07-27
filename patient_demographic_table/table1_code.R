@@ -4,24 +4,27 @@ library(gtsummary)
 data <- fread("/Users/anaghalokhande/Documents/research_levine/NIRUDAK-CEA_github/patient_demographic_table/table1_data.csv")
 
 # creating age_category variable
-data$age_category <- 'children'
+data$age_category <- 'blank'
 
-# 
-data[, age_category := fifelse(age<20, 'children', 'adults')]
-
-# 
+# setting age categories based on WHO guidelines
 data[, age_category := fcase(age<20, 'children',
                              age< 60, 'adults',
                              default = 'elderly')]
 
-# changing education variable: for children, their "education" is their mom's educations
-data[, education := fifelse(age_category == 'children', mom_education, education)]
+# setting education based on past NIRUDAK paper (Levine et al. in PLOS Neglected Tropical Diseases)
+# for children, their # of years of "education" is their mom's # years of education
+data[, education := fifelse(age <17, mom_education, education)]
 
 # reference code to change variable name in case the final table gets made from this R code
 # var_label(data$age_category) <- "Age Category"
 
+# converting monthly income from BDT to USD  (using World Bank PPP)
+data$monthly_income <- data$monthly_income/31.29
+
+final_data <- data[,-4]
+
 # generating table
-data %>%
+final_data %>%
   tbl_summary(by = age_category) %>%
   add_overall()
 
