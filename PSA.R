@@ -16,7 +16,7 @@ tmp_data <- readxl::read_excel(file.path("data", "NIRUDAK_over5yrs_raw_data_.xls
 data_tmp1 <- tmp_data %>% rename(id="Study ID") %>% rename(admit_date="Admit Date") %>% 
 		rename(admit_time="Admit Time") %>% mutate(male=as.integer(Sex=="Male")) %>%
 		select(-c(Sex, sex1)) %>% rename(age=Age) %>% rename(admit_wt="Admit Weight") %>%
-		rename(iv_fluid_prior_to_admit_wt="IV Fluid Prior to Getting Admit Weight")
+		rename(IV_fluid_prior_to_admit_wt="IV Fluid Prior to Getting Admit Weight")
 fu_names_to_change <- names(data_tmp1)[7:76]
 colnames(data_tmp1)[7:76] <- gsub("Fluid", "fluid", gsub("Time", "time", gsub("Date", "data", 
 		gsub("Patient_Weight", "wt", gsub(" ", "_", gsub("FU ", "fu", gsub("Form [6-8]::", "", fu_names_to_change)))))))
@@ -42,21 +42,17 @@ data <- data_tmp2 %>% mutate(admit_date_time=as.POSIXct(paste(as.Date(admit_date
 		mutate(discharge_date_time=as.POSIXct(paste(as.Date(discharge_date), 
 							format(discharge_time, "%H:%M:%S")), tz="UTC", format="%Y-%m-%d %H:%M:%S")) %>%
 		mutate(hosp_los = difftime(discharge_date_time, admit_date_time, units='hours', 2))
-data <- data %>% mutate(hosp_los = round(hosp_los, 2))
 
-data %>% select(hosp_los) %>% subset(hosp_los < 0)
+for (g in 1:14){
 
+	tmp_vec_IV <- as.numeric(unlist(data.frame(data[, paste(paste("fu", g, sep=''), "IV_fluid", sep="_")])))
+	new_vec_IV <- ifelse(is.na(tmp_vec_IV), 0, tmp_vec_IV)
+	data[, paste(paste("fu", g, sep=''), "IV_fluid", sep="_")] = new_vec_IV
+	tmp_vec_ORS <- as.numeric(unlist(data.frame(data[, paste(paste("fu", g, sep=''), "ORS", sep="_")])))
+	new_vec_ORS <- ifelse(is.na(tmp_vec_ORS), 0, tmp_vec_ORS)
+	data[, paste(paste("fu", g, sep=''), "ORS", sep="_")] = new_vec_ORS
+}
 
-
-round(with(data, difftime(discharge_date_time, admit_date_time, units='hours', 2)), 2)
-?difftime
-data$hosp_los
-
-gen hospital_cost_usd = length_stay_hrs * 30
-gen hospital_cost_bdt = length_stay_hrs * 2573.1
-
-
-    
 
 ####Unit Costs
 
@@ -67,7 +63,7 @@ butterfly_needle_price <- 11.15
 IV_fixed_unit_cost <- IV_tube_and_solution_price + pair_gloves_price + butterfly_needle_price
 IV_fluid_cost_per_ml <- 0.104
 ORS_fluid_cost_per_ml <- 0.0054
-
+ 
 
 ##Hospital Costs in BDT
 hosp_cost_per_hour <- 2573.1/24
@@ -75,6 +71,23 @@ hosp_cost_per_hour <- 2573.1/24
 
 
 
+####Calculate Costs
+
+##Actual
+IV_fluid_prior_to_admit_wt
+
+data <- 
+
+#calculate total fluid for IV and 
+
+data %>% select(str_subset(names(data), "IV")) %>% rowSums()
+
+
+
+
+data$iv_fluid_prior_to_admit_wt %>% summary()
+
+names(data)
 
 
 
