@@ -73,7 +73,7 @@ gen wage_lost_hospital_stay_usd = wage_lost_hospital_stay * 0.031
 gen NIRUDAK_total_cost_USD = NIRUDAK_irr_cost_bdt2 * 0.031
 gen WHO_total_cost_USD = WHO_irr_cost_bdt2 * 0.031
 
-* initial recommended resuscitation (IRR) (in USD) — Dr. Levine said to do this but will hold off on doing this because there are no wages lost in IRR and could be confusing for paper
+* initial recommended resuscitation (IRR) (in USD) — did not do this because there are no wages lost in IRR
 
 * calculating total costs — full length of hospital stay (in USD)
 gen WHO_cea_cost_total = WHO_total_cost_USD + wage_lost_hospital_stay_usd
