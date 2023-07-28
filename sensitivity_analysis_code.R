@@ -300,14 +300,9 @@ for (i in 1:length(prob_die_gvn_undertreat_grid)) {
   }
 }
 
-# M_twoway_ICER[1:10, 1:10]
 
-# max(M_twoway_ICER)
-
-# setting (as of Jul 24, arbitrary) WTP threshold
+# setting arbitrary willingness to pay (WTP) threshold
 WTP = 10
-
-# nondominated_overtreat_index <- which(M_twoway_ICER[30,] > 0)
 
 # two_way_sense_fxn is a function that ultimately generates the two-way sensitivity plot
 two_way_sense_fxn <- function (WTP, doplot=TRUE){
@@ -325,13 +320,22 @@ two_way_sense_fxn <- function (WTP, doplot=TRUE){
   }
   
   if (doplot){
-    plot(threshold_probs, pch=20, xlim = c(0,1), ylim = c(0,1))
+    plot(threshold_probs, pch=20, xlim = c(0,1), ylim = c(0,1), 
+         xlab = "Probability of Death from Overtreatment", ylab = "Probability of Death from Overtreatment",
+         main = "Two-Way Sensitivity Analysis
+         WTP = $4244.20 (double 2019 Bangladesh GDP per capita)")
   }
   return(threshold_probs)
 }
 
-# example
-WTP80_2waysense_result <- two_way_sense_fxn(80)
+# 2019 GDP per capita in Bangladesh, according to the World Bank = 2122.1
+# WHO recommends less than 3x GDP per capita
+
+# WTP at 1x GDP per capita
+two_way_sense_fxn(2122.1)
+
+# WTP at 2x GDP per capita
+two_way_sense_fxn(4244.2)
 
 ################################################################################
 # probabilistic sensitivity analysis (average over input uncertainty; characterizes uncertainty in the output)
