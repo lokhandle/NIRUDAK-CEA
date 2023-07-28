@@ -12,7 +12,7 @@ Table 2: Patient demographics
 
 Table 3: Baseline results (includes PSA results)
 
-Figure 2: 2-way sensitivity plots
+Figure 2: 2-way sensitivity plot
 
 Figure 3: cost-effectiveness acceptability curve/frontier
 
