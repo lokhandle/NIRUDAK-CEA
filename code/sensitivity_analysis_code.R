@@ -230,6 +230,7 @@ plot(prob_die_gvn_undertreat_grid, M[, "Incremental DALYs Averted"],
 
 # minimum value for which NIRUDAK is not dominated; for any probabilities to the left, NIRUDAK is dominated
 abline(v=prob_die_gvn_undertreat_grid[min(nondominated_undertreat_index)], lty = 1, col="red")
+# with a WTP, this would tell you when (on the right of the red line) would prefer NIRUDAK over WHO
 
 ################################################################################
 # OVERTREATMENT: creating loop (filling the matrix)
@@ -300,6 +301,8 @@ for (i in 1:length(prob_die_gvn_undertreat_grid)) {
   }
 }
 
+# sanity check - NIRUDAK is more expensive
+any(M_twoway_inc_costs < 0)
 
 # setting arbitrary willingness to pay (WTP) threshold
 WTP = 10
@@ -320,22 +323,32 @@ two_way_sense_fxn <- function (WTP, doplot=TRUE){
   }
   
   if (doplot){
-    plot(threshold_probs, pch=20, xlim = c(0,1), ylim = c(0,1), 
+    plot(threshold_probs, pch = "", xlim = c(0,1), ylim = c(0,1), 
          xlab = "Probability of Death from Undertreatment", ylab = "Probability of Death from Overtreatment",
-         main = "Two-Way Sensitivity Analysis
-         WTP = $4244.20 (double 2019 Bangladesh GDP per capita)")
+         main = "Two-Way Sensitivity Analysis")
+  polygon(x = c(0, 0, 1, 1), y =c(0, 1, 1, 0.49), angle = .458, border = NULL, col = "gray70")
+  polygon(x = c(0, 1, 1), y =c(0, 0, 0.49), angle = .458, border = NULL, col = "gray90")
   }
   return(threshold_probs)
-}
+  }
 
+# dark gray (gray70) = the parameter space where WHO dominates NIRUDAK
+# light gray (gray90) = the parameter space where NIRUDAK preferred over WHO
+# legend('topleft', legend=c("WHO dominates NIRUDAK", "NIRUDAK preferred over WHO"), 
+# col=c("gray70", "gray90"), pch=20)
+
+# text below to be explained in figure legend (caption)
+# NIRUDAK is dominated over the line
+# WHO model WTP = $4244.20 (double 2019 Bangladesh GDP per capita)
 # 2019 GDP per capita in Bangladesh, according to the World Bank = 2122.1
 # WHO recommends less than 3x GDP per capita
+# threshold line demarcating optimal decisions
 
 # WTP at 1x GDP per capita
 two_way_sense_fxn(2122.1)
 
 # WTP at 2x GDP per capita
-two_way_sense_fxn(4244.2)
+results_2x_GDP <- two_way_sense_fxn(4244.2)
 
 ################################################################################
 # probabilistic sensitivity analysis (average over input uncertainty; characterizes uncertainty in the output)
