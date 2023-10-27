@@ -321,7 +321,7 @@ two_way_sense_fxn <- function (WTP, doplot=TRUE){
   
   if (doplot){
     plot(threshold_probs, pch=20, xlim = c(0,1), ylim = c(0,1), 
-         xlab = "Probability of Death from Overtreatment", ylab = "Probability of Death from Overtreatment",
+         xlab = "Probability of Death from Undertreatment", ylab = "Probability of Death from Overtreatment",
          main = "Two-Way Sensitivity Analysis
          WTP = $4244.20 (double 2019 Bangladesh GDP per capita)")
   }
