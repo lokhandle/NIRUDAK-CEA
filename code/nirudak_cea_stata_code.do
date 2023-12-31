@@ -117,6 +117,14 @@ tabstat all_sex_years_lost_japan, stat(mean)
 tabstat WHO_cea_cost_total, stat(mean)
 restore
 
+* BRANCH H (add on analysis)
+preserve
+keep if WHODehydrationCategory == "No" & ActualDehydrationCategory == "Some"
+tabstat all_sex_years_lost_japan, stat(mean)
+tabstat WHO_cea_cost_total, stat(mean)
+restore
+
+
 *****************************    NIRUDAK   *************************************
 * BRANCH M
 preserve
@@ -130,4 +138,11 @@ preserve
 keep if Model6DehydrationCategory == "No" & ActualDehydrationCategory == "Severe"
 tabstat all_sex_years_lost_japan, stat(mean)
 tabstat NIRUDAK_cea_cost_total, stat(mean)
+restore
+
+* BRANCH Q (add on analysis)
+preserve
+keep if Model6DehydrationCategory == "No" & ActualDehydrationCategory == "Some"
+tabstat all_sex_years_lost_japan, stat(mean)
+tabstat WHO_cea_cost_total, stat(mean)
 restore
