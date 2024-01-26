@@ -38,7 +38,13 @@ data_tmp2 <- data_tmp1 %>% rename(final_wt="Final wt") %>% rename(stable_wt="Sta
 
 ##Construct Needed Variables
 
-data <- data_tmp2 %>% mutate(admit_date_time=as.POSIXct(paste(as.Date(admit_date), 
+
+data_tmp3 <- data_tmp2 %>% rename(mental_status='Form 2::Mental Status 1') %>%
+			rename(eye_level="Form 2::Eyes 1") %>% rename(thirst='Form 2::Thirst 1') %>% 
+			rename(skin_pinch="Form 2::Skin Pinch 1")
+
+
+data <- data_tmp3 %>% mutate(admit_date_time=as.POSIXct(paste(as.Date(admit_date), 
 							format(admit_time, "%H:%M:%S")), tz="UTC", format="%Y-%m-%d %H:%M:%S")) %>%
 		mutate(discharge_date_time=as.POSIXct(paste(as.Date(discharge_date), 
 							format(discharge_time, "%H:%M:%S")), tz="UTC", format="%Y-%m-%d %H:%M:%S")) %>%
@@ -54,8 +60,10 @@ for (g in 1:14){
 	data[, paste(paste("fu", g, sep=''), "ORS", sep="_")] = new_vec_ORS
 }
 
+
 ##Drop those with missing true dehydration status
 data_use <- data[-which(is.na(data$actual_dehydrat_cat)), ]  
+
 
 ##Make Tables & Cross-tabulation
 truth <- factor(data_use$actual_dehydrat_cat, levels=levels(factor(data_use$actual_dehydrat_cat))[c(1, 3, 2)], ordered=T)
@@ -163,6 +171,7 @@ nirudak_status_coarse[which(nirudak_status %in% c('some dehydration treated with
 nirudak_status_coarse[which(nirudak_status %in% c('some dehydration untreated b/c missing', 
 			'some dehydration untreated'))] = 'some dehydration untreated'
 
+age <- data_use$age
 age_undrtrt_severe_who <- age[which(who_status_coarse=='undertreated severe dehydration')]
 age_undrtrt_severe_nirudak <- age[which(nirudak_status_coarse=='undertreated severe dehydration')]
 age_ovrtrt_severe_who <- age[which(who_status_coarse=='non-severe dehydration treated with IV fluids')]
@@ -193,7 +202,14 @@ t.test(age_ovrtrt_severe_who, age_ovrtrt_severe_nirudak)
 wilcox.test(age_ovrtrt_severe_who, age_ovrtrt_severe_nirudak, conf.int=T)
 
 
-####Summary
+####Summary & Notes
+
+##the gold standard category was derived from categorizing actual percent dehydration calculated 
+ #as 100 * (final_wt - admission_wt)/final_wt
+ #severe dehydration was >9%, some dehydration was 3-9%, and no dehydration was <3%
+##the Nirudak model was a logistic ordinal regression model based on age and sex and
+ #16 clinical predictors measured at admission. 
+
 #both who and nirudak (but more so nirudak) tend to missclassify some dehyrdation
  #as severe and, to a lesser extent, no dehydration.
 #nirudak was more likely to pick up severe dehydration at the exense, however, of being more likely to incorrectly classify
