@@ -74,11 +74,14 @@ data_use_tmp <- data[-which(is.na(data$actual_dehydrat_cat)), ]
 data_use <- data_use_tmp[-which(is.na(data_use_tmp$nirudak_dehydrat_cat)), ]  
 
 ##Construct/Identify hospital LOS, wage rate, and ORS and IV ml of fluid
+data_use %>% colnames()
+
 data_use$daily_wage = data_use$monthly_income/30
 data_use$hosp_los_days = as.numeric(data_use$hosp_los)/24
 data_use$wage_lost_hosp_stay = with(data_use, daily_wage * hosp_los_days)
 data_use$total_ORS_fluid <- rowSums(as.data.frame(data_use[, colnames(data_use)[grep('ORS', colnames(data_use))]]))
 data_use$total_IV_fluid <- rowSums(as.data.frame(data_use[, colnames(data_use)[grep('IV', colnames(data_use))][-1]]))
+
 
 joint_prob_vec_nirudak_orig <- joint_prob_vec_who_orig <- rep(NA, 9) 
 names(joint_prob_vec_nirudak_orig) <- names(joint_prob_vec_who_orig) <- c(
@@ -113,36 +116,67 @@ B <- 50 #number of bootstrap samples
 N <- nrow(data_use) #number of obsevations per bootstrap dataset
 joint_prob_vec_who_boot_mat <- joint_prob_vec_nirudak_boot_mat <- matrix(NA, nrow=B, ncol=9)
 row_indices <- 1:N
-variable_mean_cost_boot_mat <- data.frame(matrix(NA, nrow=B, ncol=4))
+variable_mean_cost_boot_mat <- data.frame(matrix(NA, nrow=B, ncol=12))
 colnames(variable_mean_cost_boot_mat) <- c("mean_hosp_costs", "mean_productivity_costs", 
-					"mean_variable_ORS_fluid_costs", "mean_variable_IV_fluid_costs")
-
+					"mean_variable_ORS_fluid_costs_actual", "mean_variable_IV_fluid_costs_actual", 
+					"mean_variable_ORS_fluid_costs_who", "mean_variable_ORS_fluid_costs_nirudak", 
+					 "mean_variable_IV_fluid_costs_who", "mean_variable_IV_fluid_costs_nirudak", 
+					"mean_variable_ORS_fluid_costs_act_who", "mean_variable_ORS_fluid_costs_act_nirudak",
+					"mean_variable_IV_fluid_costs_act_who", "mean_variable_IV_fluid_costs_act_nirudak")
 
 for (i in 1:B){
 
 test_sample <- sample.int(N, size = N, replace = TRUE)
 data_tmp <- data_use[test_sample, ]
 
-cost_data_tmp <- as.data.frame(data_tmp[, c("hosp_los", "wage_lost_hosp_stay", "total_ORS_fluid", "total_IV_fluid")])
+cost_data_tmp <- as.data.frame(data_tmp[, c("hosp_los", "wage_lost_hosp_stay", "total_ORS_fluid", "total_IV_fluid", 
+			"nirudak_volume_deficit", "who_volume_deficit", "actual_dehydrat_cat")])
 
 ##Calculate Mean costs
 
 #hospital costs
 hosp_cost_per_hour <- 2573.1/24
 hosp_los_hours_use <- cost_data_tmp$hosp_los
-hosp_total_costs_use <- hosp_cost_per_hour * hosp_los_hours_use 
-variable_mean_cost_boot_mat[i, "mean_hosp_costs"] <- mean(hosp_total_costs_use, na.rm=T)
+hosp_total_costs_if_severe <- hosp_cost_per_hour * hosp_los_hours_use 
+variable_mean_cost_boot_mat[i, "mean_hosp_costs"] <- mean(hosp_total_costs_if_severe, na.rm=T)
 #productivity costs
 variable_mean_cost_boot_mat[i, "mean_productivity_costs"] <- mean(cost_data_tmp$wage_lost_hosp_stay, na.rm=T)
 #ORS fluid variable costs
 ORS_fluid_cost_per_ml <- 0.0054
-total_ORS_variable_fluid_costs <- cost_data_tmp$total_ORS_fluid * ORS_fluid_cost_per_ml 
-variable_mean_cost_boot_mat[i, "mean_variable_ORS_fluid_costs"] <- mean(total_ORS_variable_fluid_costs, na.rm=T)
+total_ORS_variable_fluid_costs_actual <- cost_data_tmp$total_ORS_fluid * ORS_fluid_cost_per_ml 
+variable_mean_cost_boot_mat[i, "mean_variable_ORS_fluid_costs_actual"] <- mean(total_ORS_variable_fluid_costs_actual, na.rm=T)
 #IV fluid variable costs
 IV_fluid_cost_per_ml <- 0.104
-total_IV_variable_fluid_costs <- cost_data_tmp$total_IV_fluid * IV_fluid_cost_per_ml 
-variable_mean_cost_boot_mat[i, "mean_variable_IV_fluid_costs"] <- mean(total_IV_variable_fluid_costs, na.rm=T)
+total_IV_variable_fluid_costs_actual <- cost_data_tmp$total_IV_fluid * IV_fluid_cost_per_ml 
+variable_mean_cost_boot_mat[i, "mean_variable_IV_fluid_costs_actual"] <- mean(total_IV_variable_fluid_costs_actual, na.rm=T)
+#model predicted fluid
+#convert to $ using ml cost and condition on having 'some' for ORS
+who_predicted_ORS_costs <- as.numeric(data_tmp$who_volume_deficit) * 1000 * ORS_fluid_cost_per_ml * 
+					as.integer(data_tmp$who_dehydrat_cat == 'Some')
+variable_mean_cost_boot_mat[i, "mean_variable_ORS_fluid_costs_who"] <- mean(who_predicted_ORS_costs, na.rm=T)
+nirudak_predicted_ORS_costs <- as.numeric(data_tmp$nirudak_volume_deficit) * 1000 * ORS_fluid_cost_per_ml * 
+					as.integer(data_tmp$nirudak_dehydrat_cat == 'Some')
+variable_mean_cost_boot_mat[i, "mean_variable_ORS_fluid_costs_nirudak"] <- mean(nirudak_predicted_ORS_costs, na.rm=T)
+who_predicted_IV_costs <- as.numeric(data_tmp$who_volume_deficit) * 1000 * IV_fluid_cost_per_ml * 
+					as.integer(data_tmp$who_dehydrat_cat == 'Severe')
+variable_mean_cost_boot_mat[i, "mean_variable_IV_fluid_costs_who"] <- mean(who_predicted_IV_costs, na.rm=T)
+nirudak_predicted_IV_costs <- as.numeric(data_tmp$nirudak_volume_deficit) * 1000 * IV_fluid_cost_per_ml * 
+					as.integer(data_tmp$nirudak_dehydrat_cat == 'Severe')
+variable_mean_cost_boot_mat[i, "mean_variable_IV_fluid_costs_nirudak"] <- mean(nirudak_predicted_IV_costs, na.rm=T)
 
+variable_mean_cost_boot_mat[i, c("mean_variable_ORS_fluid_costs_act_who")] <-
+				as.numeric(as.numeric(prop.table(table(data_tmp$who_dehydrat_cat))[c(1, 3, 2)]) %*%
+				(ORS_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_ORS_fluid, actual_dehydrat_cat, mean))[c(1, 3, 2)])))
+variable_mean_cost_boot_mat[i, c("mean_variable_ORS_fluid_costs_act_nirudak")] <-
+					as.numeric(as.numeric(prop.table(table(data_tmp$nirudak_dehydrat_cat))[c(1, 3, 2)]) %*%
+				(ORS_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_ORS_fluid, actual_dehydrat_cat, mean))[c(1, 3, 2)])))
+variable_mean_cost_boot_mat[i, c("mean_variable_IV_fluid_costs_act_who")] <-
+					as.numeric(as.numeric(prop.table(table(data_tmp$who_dehydrat_cat))[c(1, 3, 2)]) %*%
+				(IV_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_IV_fluid, actual_dehydrat_cat, mean))[c(1, 3, 2)])))
+
+variable_mean_cost_boot_mat[i, c("mean_variable_IV_fluid_costs_act_nirudak")] <-
+					as.numeric(as.numeric(prop.table(table(data_tmp$nirudak_dehydrat_cat))[c(1, 3, 2)]) %*%
+				(IV_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_IV_fluid, actual_dehydrat_cat, mean))[c(1, 3, 2)])))
 
 joint_prob_vec_nirudak_tmp <- joint_prob_vec_who_tmp <- rep(NA, 9) 
 names(joint_prob_vec_nirudak_tmp) <- names(joint_prob_vec_who_tmp) <- c(
@@ -177,71 +211,36 @@ joint_prob_vec_nirudak_boot_mat[i, ] <- joint_prob_vec_nirudak_tmp
 colnames(joint_prob_vec_who_boot_mat) <- colnames(joint_prob_vec_nirudak_boot_mat) <- names(joint_prob_vec_nirudak_tmp)
 
 
-####Notes
-###ok, so the costs calculations you did were wrong
-they were based on actual costs. For fluid, you want the model-predicted fluid deficit 
- converted to costs as this is the 'what if patients were treated based on model predictions value'
- but you could also consider using actual average costs for each true status
+####Calculate Costs
 
-figure out what anagha did for hospital los for counterfactual trt costs, namely
-	how did the model prediction of status change the assumed los in the hospital
-
-then finish calculation of costs for each node
-then do Dalys per node  
-
-
-######
-
-
-
-
-gen WHO_irr_cost_usd2 = .
-replace WHO_irr_cost_usd2 = hospital_cost_usd + (WHOVolumeDeficitL * 1000 * 0.00126) + 0.38 + post_6hr_IVF_cost_usd if WHODehydrationCategory == "Severe"
-replace WHO_irr_cost_usd2 = 5 + (WHOVolumeDeficitL * 1000 * 0.00006) if WHODehydrationCategory == "Some"
-replace WHO_irr_cost_usd2 = 0 if WHODehydrationCategory == "No"
-
-gen WHO_irr_cost_bdt2 = .
-replace WHO_irr_cost_bdt2 = hospital_cost_bdt + (WHOVolumeDeficitL * 1000 * 0.104) + 32.59 + post_6hr_IVF_cost_bdt if WHODehydrationCategory == "Severe"
-replace WHO_irr_cost_bdt2 = 429 + (WHOVolumeDeficitL * 1000 * 0.0054) if WHODehydrationCategory == "Some"
-replace WHO_irr_cost_bdt2 = 0 if WHODehydrationCategory == "No"
-
-
-gen NIRUDAK_irr_cost_usd2 = .
-replace NIRUDAK_irr_cost_usd2 = hospital_cost_usd + (Model6VolumeDeficitL * 1000 * 0.00126) + 0.38 + post_6hr_IVF_cost_usd if Model6DehydrationCategory == "Severe"
-replace NIRUDAK_irr_cost_usd2 = 5 + (Model6VolumeDeficitL * 1000 * 0.00006) if Model6DehydrationCategory == "Some"
-replace NIRUDAK_irr_cost_usd2 = 0 if Model6DehydrationCategory == "No"
-
-gen NIRUDAK_irr_cost_bdt2 = .
-replace NIRUDAK_irr_cost_bdt2 = hospital_cost_bdt + (Model6VolumeDeficitL * 1000 * 0.104) + 32.59 + post_6hr_IVF_cost_bdt if Model6DehydrationCategory == "Severe"
-replace NIRUDAK_irr_cost_bdt2 = 429 + (Model6VolumeDeficitL * 1000 * 0.0054) if Model6DehydrationCategory == "Some"
-replace NIRUDAK_irr_cost_bdt2 = 0 if Model6DehydrationCategory == "No"
-
-
-
-
-apply(variable_mean_cost_boot_mat, 2, mean, na.rm=T)
-
-joint_prob_vec_who_boot_mat
-joint_prob_vec_nirudak_boot_mat
-
-
+##make vectors for summary stats
 
 ##Unit Costs
 
+#i=1
 
 ##Hospital Costs in BDT
 ##IV and ORS Costs in BDT
-#fixed per-person unit costs
+#fixed per-person fluid unit costs
 IV_tube_and_solution_price <- 14.58
 pair_gloves_price <- 6.86
 butterfly_needle_price <- 11.15
 IV_fixed_unit_cost <- IV_tube_and_solution_price + pair_gloves_price + butterfly_needle_price
-#variable per-person unit costs
+
+ref_who_pred_total_ORS_mean_costs_vec <- variable_mean_cost_boot_mat[, "mean_variable_ORS_fluid_costs_who"]
+ref_nirudak_pred_total_ORS_mean_costs_vec <- variable_mean_cost_boot_mat[, "mean_variable_ORS_fluid_costs_nirudak"]
+ref_who_pred_total_IV_mean_costs_vec <- variable_mean_cost_boot_mat[, "mean_variable_IV_fluid_costs_who"] + IV_fixed_unit_cost
+ref_nirudak_pred_total_IV_mean_costs_vec <- variable_mean_cost_boot_mat[, "mean_variable_IV_fluid_costs_nirudak"] + IV_fixed_unit_cost
+scen_who_pred_total_ORS_mean_costs_vec <- variable_mean_cost_boot_mat[ c("mean_variable_ORS_fluid_costs_act_who")] 
+scen_nirudak_pred_total_ORS_mean_costs_vec <- variable_mean_cost_boot_mat[ c("mean_variable_ORS_fluid_costs_act_nirudak")] 
+scen_who_pred_total_IV_mean_costs_vec <- variable_mean_cost_boot_mat[ c("mean_variable_IV_fluid_costs_act_who")] + IV_fixed_unit_cost
+scen_nirudak_pred_total_IV_mean_costs_vec <- variable_mean_cost_boot_mat[ c("mean_variable_IV_fluid_costs_act_nirudak")] + IV_fixed_unit_cost
 
 
 
+do hospital and productivity costs for each 
 
-####Calculate Costs
+
 
 ##Actual
 IV_fluid_prior_to_admit_wt
@@ -260,6 +259,12 @@ data$iv_fluid_prior_to_admit_wt %>% summary()
 names(data)
 
 
+
+
+#productivity costs
+no_dehyd_lost_hours = 3
+some_dehyd_lost_hours = 9
+severe_dehyrd_lost_hours_tmp = 3
 
 
 
