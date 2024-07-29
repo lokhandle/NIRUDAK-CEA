@@ -1,5 +1,5 @@
-user = 'Jonah'
-#user = 'Anagha'
+#user = 'Jonah'
+user = 'Anagha'
 
 ##load packages
 library(tidyverse)
@@ -72,6 +72,9 @@ for (g in 1:14){
 ##Drop those with missing true dehydration status
 data_use_tmp <- data[-which(is.na(data$actual_dehydrat_cat)), ]  
 data_use <- data_use_tmp[-which(is.na(data_use_tmp$nirudak_dehydrat_cat)), ]  
+
+# changing 
+data_use$who_volume_deficit <- as.numeric(data_use$who_volume_deficit)
 
 ##Construct/Identify hospital LOS, wage rate, and ORS and IV ml of fluid
 data_use %>% colnames()
@@ -151,32 +154,52 @@ total_IV_variable_fluid_costs_actual <- cost_data_tmp$total_IV_fluid * IV_fluid_
 variable_mean_cost_boot_mat[i, "mean_variable_IV_fluid_costs_actual"] <- mean(total_IV_variable_fluid_costs_actual, na.rm=T)
 #model predicted fluid
 #convert to $ using ml cost and condition on having 'some' for ORS
+# calculating costs over the entire sample based on the amount/type of fluid prescribed by WHO (for SOME)
 who_predicted_ORS_costs <- as.numeric(data_tmp$who_volume_deficit) * 1000 * ORS_fluid_cost_per_ml * 
 					as.integer(data_tmp$who_dehydrat_cat == 'Some')
 variable_mean_cost_boot_mat[i, "mean_variable_ORS_fluid_costs_who"] <- mean(who_predicted_ORS_costs, na.rm=T)
+
+# calculating costs over the entire sample based on the amount/type of fluid prescribed by NIRUDAK (for SOME)
 nirudak_predicted_ORS_costs <- as.numeric(data_tmp$nirudak_volume_deficit) * 1000 * ORS_fluid_cost_per_ml * 
 					as.integer(data_tmp$nirudak_dehydrat_cat == 'Some')
 variable_mean_cost_boot_mat[i, "mean_variable_ORS_fluid_costs_nirudak"] <- mean(nirudak_predicted_ORS_costs, na.rm=T)
+
+# calculating costs over the entire sample based on the amount/type of fluid prescribed by WHO (for SEVERE)
 who_predicted_IV_costs <- as.numeric(data_tmp$who_volume_deficit) * 1000 * IV_fluid_cost_per_ml * 
 					as.integer(data_tmp$who_dehydrat_cat == 'Severe')
 variable_mean_cost_boot_mat[i, "mean_variable_IV_fluid_costs_who"] <- mean(who_predicted_IV_costs, na.rm=T)
+
+# calculating costs over the entire sample based on the amount/type of fluid prescribed by NIRUDAK (for SEVERE)
 nirudak_predicted_IV_costs <- as.numeric(data_tmp$nirudak_volume_deficit) * 1000 * IV_fluid_cost_per_ml * 
 					as.integer(data_tmp$nirudak_dehydrat_cat == 'Severe')
 variable_mean_cost_boot_mat[i, "mean_variable_IV_fluid_costs_nirudak"] <- mean(nirudak_predicted_IV_costs, na.rm=T)
 
+# calculating mean variable fluid cost over entire sample assuming that providers tailor the amount of fluid to the model predicted
+# dehyrdation category and they give the patient the average amount of fluid that was actually given to all patients in the corresponding true
+# dehydration category, with the exception that only patients identified by the model as severely dehydrated get IVF
+# here, the model is used to identify dehydration category and hospitalization status (e.g., Severe goes to the hospital)
+# and the type of fluid received (e.g., Severe gets IVF)
+# then everyone in that model predicted dehydration category will be treated like what was observed in the real hospital in Bangladesh (with the exception that
+# only patients in a model-predicted Severe dehydration category get IVF)
+
+# ORS - WHO
 variable_mean_cost_boot_mat[i, c("mean_variable_ORS_fluid_costs_act_who")] <-
-				as.numeric(as.numeric(prop.table(table(data_tmp$who_dehydrat_cat))[c(1, 3, 2)]) %*%
-				(ORS_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_ORS_fluid, actual_dehydrat_cat, mean))[c(1, 3, 2)])))
+				as.numeric(as.numeric(prop.table(table(data_tmp$who_dehydrat_cat))[c(1, 3, 2)]) %*% # proportion (according to WHO) in each dehydration category
+				(ORS_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_ORS_fluid, actual_dehydrat_cat, mean))[c(1, 3, 2)]))) # mean ORS fluid used in each true disease category
+# ORS - NIRUDAK
 variable_mean_cost_boot_mat[i, c("mean_variable_ORS_fluid_costs_act_nirudak")] <-
 					as.numeric(as.numeric(prop.table(table(data_tmp$nirudak_dehydrat_cat))[c(1, 3, 2)]) %*%
 				(ORS_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_ORS_fluid, actual_dehydrat_cat, mean))[c(1, 3, 2)])))
-variable_mean_cost_boot_mat[i, c("mean_variable_IV_fluid_costs_act_who")] <-
-					as.numeric(as.numeric(prop.table(table(data_tmp$who_dehydrat_cat))[c(1, 3, 2)]) %*%
-				(IV_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_IV_fluid, actual_dehydrat_cat, mean))[c(1, 3, 2)])))
 
+# IVF - WHO
+variable_mean_cost_boot_mat[i, c("mean_variable_IV_fluid_costs_act_who")] <-
+					as.numeric(as.numeric(prop.table(table(data_tmp$who_dehydrat_cat))[c(2)]) %*%
+				(IV_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_IV_fluid, actual_dehydrat_cat, mean))[c(2)])))
+
+# IVF - NIRUDAK
 variable_mean_cost_boot_mat[i, c("mean_variable_IV_fluid_costs_act_nirudak")] <-
-					as.numeric(as.numeric(prop.table(table(data_tmp$nirudak_dehydrat_cat))[c(1, 3, 2)]) %*%
-				(IV_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_IV_fluid, actual_dehydrat_cat, mean))[c(1, 3, 2)])))
+					as.numeric(as.numeric(prop.table(table(data_tmp$nirudak_dehydrat_cat))[c(2)]) %*%
+				(IV_fluid_cost_per_ml * as.numeric(with(cost_data_tmp, by(total_IV_fluid, actual_dehydrat_cat, mean))[c(2)])))
 
 joint_prob_vec_nirudak_tmp <- joint_prob_vec_who_tmp <- rep(NA, 9) 
 names(joint_prob_vec_nirudak_tmp) <- names(joint_prob_vec_who_tmp) <- c(
@@ -227,15 +250,20 @@ pair_gloves_price <- 6.86
 butterfly_needle_price <- 11.15
 IV_fixed_unit_cost <- IV_tube_and_solution_price + pair_gloves_price + butterfly_needle_price
 
+# assuming model predicted fluid usage (assuming use of only one type of fluid)
 ref_who_pred_total_ORS_mean_costs_vec <- variable_mean_cost_boot_mat[, "mean_variable_ORS_fluid_costs_who"]
 ref_nirudak_pred_total_ORS_mean_costs_vec <- variable_mean_cost_boot_mat[, "mean_variable_ORS_fluid_costs_nirudak"]
 ref_who_pred_total_IV_mean_costs_vec <- variable_mean_cost_boot_mat[, "mean_variable_IV_fluid_costs_who"] + IV_fixed_unit_cost
 ref_nirudak_pred_total_IV_mean_costs_vec <- variable_mean_cost_boot_mat[, "mean_variable_IV_fluid_costs_nirudak"] + IV_fixed_unit_cost
-scen_who_pred_total_ORS_mean_costs_vec <- variable_mean_cost_boot_mat[ c("mean_variable_ORS_fluid_costs_act_who")] 
+
+# assuming real-life fluid usage ()
+scen_who_pred_total_ORS_mean_costs_vec <- variable_mean_cost_boot_mat[ c("mean_variable_ORS_fluid_costs_act_who")]
 scen_nirudak_pred_total_ORS_mean_costs_vec <- variable_mean_cost_boot_mat[ c("mean_variable_ORS_fluid_costs_act_nirudak")] 
 scen_who_pred_total_IV_mean_costs_vec <- variable_mean_cost_boot_mat[ c("mean_variable_IV_fluid_costs_act_who")] + IV_fixed_unit_cost
 scen_nirudak_pred_total_IV_mean_costs_vec <- variable_mean_cost_boot_mat[ c("mean_variable_IV_fluid_costs_act_nirudak")] + IV_fixed_unit_cost
 
+# JULY 23: first thing to do next meeting is compare the mean volume deficits among models (we would expect NIRUDAK to have a higher average volume
+# deficit b/c it puts more people in the Severe dehydration category)
 
 
 do hospital and productivity costs for each 
