@@ -119,8 +119,8 @@ B <- 50 #number of bootstrap samples
 N <- nrow(data_use) #number of observations per bootstrap dataset
 joint_prob_vec_who_boot_mat <- joint_prob_vec_nirudak_boot_mat <- matrix(NA, nrow=B, ncol=9)
 row_indices <- 1:N
-mean_cost_boot_mat <- data.frame(matrix(NA, nrow=B, ncol=12))
-colnames(mean_cost_boot_mat) <- c("mean_hosp_costs", "mean_productivity_costs", 
+mean_cost_boot_mat <- data.frame(matrix(NA, nrow=B, ncol=14))
+colnames(mean_cost_boot_mat) <- c("mean_hosp_costs", "mean_hosp_costs_severe_only_nirudak", "mean_hosp_costs_severe_only_who", "mean_productivity_costs", 
 					"mean_ORS_fluid_costs_actual", "mean_IV_fluid_costs_actual", 
 					"mean_ORS_fluid_costs_who", "mean_ORS_fluid_costs_nirudak", 
 					 "mean_IV_fluid_costs_who", "mean_IV_fluid_costs_nirudak", 
@@ -150,13 +150,22 @@ cost_data_tmp <- as.data.frame(data_tmp[, c("hosp_los", "wage_lost_hosp_stay", "
 ##Calculate Mean costs
 
 
-#hospital costs
+# actual hospital costs - for each bootstrap dataset we calculate the mean
 hosp_cost_per_hour <- 2573.1/24
 hosp_los_hours_use <- cost_data_tmp$hosp_los
-hosp_total_costs_if_severe <- hosp_cost_per_hour * hosp_los_hours_use 
-mean_cost_boot_mat[i, "mean_hosp_costs"] <- mean(hosp_total_costs_if_severe, na.rm=T)
+hosp_costs <- as.numeric(hosp_cost_per_hour * hosp_los_hours_use)
+mean_cost_boot_mat[i, "mean_hosp_costs"] <- mean(hosp_costs, na.rm=T)
+mean_cost_boot_mat[i, "mean_hosp_costs_severe_only_nirudak"] <- with(data_tmp, mean(ifelse(nirudak_dehydrat_cat == 'Severe', hosp_costs, 0)))
+mean_cost_boot_mat[i, "mean_hosp_costs_severe_only_who"] <- with(data_tmp, mean(ifelse(who_dehydrat_cat == 'Severe', hosp_costs, 0)))
 #productivity costs
-mean_cost_boot_mat[i, "mean_productivity_costs"] <- mean(cost_data_tmp$wage_lost_hosp_stay, na.rm=T)
+# mean_cost_boot_mat[i, "mean_productivity_costs"] <- mean(cost_data_tmp$wage_lost_hosp_stay, na.rm=T)
+
+# revist this
+# people who die will incur productivity costs
+# take the average yearly wage * remaining lifetime
+# detailed approach: for anyone who died - mean income per year (mean(data_use$monthly_income))*12 - every year of life they lose, they lose that amount
+# assume that people with Severe dehydration lose work whether they're in the hospital or not, so the model does not affect short term productivity costs
+
 #ORS fluid variable costs
 ORS_fluid_cost_per_ml <- 0.0054
 total_ORS_variable_fluid_costs_actual <- cost_data_tmp$total_ORS_fluid * ORS_fluid_cost_per_ml 
@@ -285,22 +294,108 @@ scen_nirudak_pred_total_ORS_mean_costs_vec <- mean_cost_boot_mat[, c("mean_ORS_f
 scen_who_pred_total_IV_mean_costs_vec <- mean_cost_boot_mat[, c("mean_IV_fluid_costs_act_who")]
 scen_nirudak_pred_total_IV_mean_costs_vec <- mean_cost_boot_mat[, c("mean_IV_fluid_costs_act_nirudak")] 
 
+# only 1 scenario for hosp costs
+ref_who_mean_hosp_costs_vec <- mean_cost_boot_mat[,"mean_hosp_costs_severe_only_who"]
+ref_nirudak_mean_hosp_costs_vec <- mean_cost_boot_mat[,"mean_hosp_costs_severe_only_nirudak"]
+
+# assume that people lose productive time while severely dehydrated but that would be equally distributed among arms
+# but people would differentially lose productivity if they die (as a result of having Severe dehydration but being treated as Some or None)
+
+
 # calculating fluid costs for NIRUDAK based on model predicted dehydration categories
 # these next two items are just sanity checks
-NIRUDAK_fluid_cost = c(
-((data_use$nirudak_volume_deficit * 1000 * 0.104) + 32.59)*(data_use$nirudak_dehydrat_cat == "Severe"),
-(data_use$nirudak_volume_deficit * 1000 * 0.0054)*(data_use$nirudak_dehydrat_cat == "Some"),
-rep(0, length(which(data_use$nirudak_dehydrat_cat == "No")))
-)
+#NIRUDAK_fluid_cost = c(
+#((data_use$nirudak_volume_deficit * 1000 * 0.104) + 32.59)*(data_use$nirudak_dehydrat_cat == "Severe"),
+#(data_use$nirudak_volume_deficit * 1000 * 0.0054)*(data_use$nirudak_dehydrat_cat == "Some"),
+#rep(0, length(which(data_use$nirudak_dehydrat_cat == "No"))))
 
-WHO_fluid_cost = c(
-  ((data_use$who_volume_deficit * 1000 * 0.104) + 32.59)*(data_use$who_dehydrat_cat == "Severe"),
-  (data_use$who_volume_deficit * 1000 * 0.0054)*(data_use$who_dehydrat_cat == "Some"),
-  rep(0, length(which(data_use$who_dehydrat_cat == "No")))
-)
+#WHO_fluid_cost = c(
+#  ((data_use$who_volume_deficit * 1000 * 0.104) + 32.59)*(data_use$who_dehydrat_cat == "Severe"),
+#  (data_use$who_volume_deficit * 1000 * 0.0054)*(data_use$who_dehydrat_cat == "Some"),
+#  rep(0, length(which(data_use$who_dehydrat_cat == "No"))))
 
-# AUG 9: next meeting implement hospital and productivity costs (i.e., do the above for hospital & productivity costs)
-# after that, implement DALYs
+################################################################################
+# implementing DALYs
+five_yr_age_buckets <- seq(0, 90, 5)
+resid_life_expect_at_age_male <- c(81.41, 76.63, 71.66, 66.69, 61.77, 56.91, 52.03, 47.18,
+                                   42.35, 37.57, 32.89, 28.34, 23.97, 19.83, 15.96, 12.41, 9.18,
+                                   6.46, 4.41)
+
+resid_life_expect_at_age_female <- c(87.45, 82.66, 77.69, 72.72, 67.77, 62.84, 57.91,
+                                    53, 48.11, 43.26, 38.49, 33.79, 29.17, 24.63, 20.21, 15.97,
+                                    12.01, 8.51, 5.71)
+
+
+resid_life_interp_fxn_male <- splinefun(five_yr_age_buckets, resid_life_expect_at_age_male)
+
+resid_life_interp_fxn_female <- splinefun(five_yr_age_buckets, resid_life_expect_at_age_female)
+
+
+  gen years_lost_female = 87.45 if Sex == "Female" & Age < 5
+replace years_lost_female = 82.66 if Sex == "Female" & 5 <= Age & Age < 10
+replace years_lost_female = 77.69 if Sex == "Female" & 10 <= Age & Age < 15
+replace years_lost_female = 72.72 if Sex == "Female" & 15 <= Age & Age < 20
+replace years_lost_female = 67.77 if Sex == "Female" & 20 <= Age & Age < 25
+replace years_lost_female = 62.84 if Sex == "Female" & 25 <= Age & Age < 30
+replace years_lost_female = 57.91 if Sex == "Female" & 30 <= Age & Age < 35
+replace years_lost_female = 53 if Sex == "Female" & 35 <= Age & Age < 40
+replace years_lost_female = 48.11 if Sex == "Female" & 40 <= Age & Age < 45
+replace years_lost_female = 43.26 if Sex == "Female" & 45 <= Age & Age < 50
+replace years_lost_female = 38.49 if Sex == "Female" & 50 <= Age & Age < 55
+replace years_lost_female = 33.79 if Sex == "Female" & 55 <= Age & Age < 60
+replace years_lost_female = 29.17 if Sex == "Female" & 60 <= Age & Age < 65
+replace years_lost_female = 24.63 if Sex == "Female" & 65 <= Age & Age < 70
+replace years_lost_female = 20.21 if Sex == "Female" & 70 <= Age & Age < 75
+replace years_lost_female = 15.97 if Sex == "Female" & 75 <= Age & Age < 80
+replace years_lost_female = 12.01 if Sex == "Female" & 80 <= Age & Age < 85
+replace years_lost_female = 8.51 if Sex == "Female" & 85 <= Age & Age < 90
+replace years_lost_female = 5.71 if Sex == "Female" & 90 <= Age
+
+  
+  
+gen years_lost_male = 0
+replace years_lost_male = 81.41 if Sex == "Male" & Age < 5
+replace years_lost_male = 76.63 if Sex == "Male" & 5 <= Age & Age < 10
+replace years_lost_male = 71.66 if Sex == "Male" & 10 <= Age & Age < 15
+replace years_lost_male = 66.69 if Sex == "Male" & 15 <= Age & Age < 20
+replace years_lost_male = 61.77 if Sex == "Male" & 20 <= Age & Age < 25
+replace years_lost_male = 56.91 if Sex == "Male" & 25 <= Age & Age < 30
+replace years_lost_male = 52.03 if Sex == "Male" & 30 <= Age & Age < 35
+replace years_lost_male = 47.18 if (Sex == "Male") & 35 <= Age & Age < 40
+replace years_lost_male = 42.35 if Sex == "Male" & 40 <= Age & Age < 45
+replace years_lost_male = 37.57 if Sex == "Male" & 45 <= Age & Age < 50
+replace years_lost_male = 32.89 if Sex == "Male" & 50 <= Age & Age < 55
+replace years_lost_male = 28.34 if Sex == "Male" & 55 <= Age & Age < 60
+replace years_lost_male = 23.97 if Sex == "Male" & 60 <= Age & Age < 65
+replace years_lost_male = 19.83 if Sex == "Male" & 65 <= Age & Age < 70
+replace years_lost_male = 15.96 if Sex == "Male" & 70 <= Age & Age < 75
+replace years_lost_male = 12.41 if Sex == "Male" & 75 <= Age & Age < 80
+replace years_lost_male = 9.18 if Sex == "Male" & 80 <= Age & Age < 85
+replace years_lost_male = 6.46 if Sex == "Male" & 85 <= Age & Age < 90
+replace years_lost_male = 4.41 if Sex == "Male" & 90 <= Age
+
+
+gen years_lost_female = 87.45 if Sex == "Female" & Age < 5
+replace years_lost_female = 82.66 if Sex == "Female" & 5 <= Age & Age < 10
+replace years_lost_female = 77.69 if Sex == "Female" & 10 <= Age & Age < 15
+replace years_lost_female = 72.72 if Sex == "Female" & 15 <= Age & Age < 20
+replace years_lost_female = 67.77 if Sex == "Female" & 20 <= Age & Age < 25
+replace years_lost_female = 62.84 if Sex == "Female" & 25 <= Age & Age < 30
+replace years_lost_female = 57.91 if Sex == "Female" & 30 <= Age & Age < 35
+replace years_lost_female = 53 if Sex == "Female" & 35 <= Age & Age < 40
+replace years_lost_female = 48.11 if Sex == "Female" & 40 <= Age & Age < 45
+replace years_lost_female = 43.26 if Sex == "Female" & 45 <= Age & Age < 50
+replace years_lost_female = 38.49 if Sex == "Female" & 50 <= Age & Age < 55
+replace years_lost_female = 33.79 if Sex == "Female" & 55 <= Age & Age < 60
+replace years_lost_female = 29.17 if Sex == "Female" & 60 <= Age & Age < 65
+replace years_lost_female = 24.63 if Sex == "Female" & 65 <= Age & Age < 70
+replace years_lost_female = 20.21 if Sex == "Female" & 70 <= Age & Age < 75
+replace years_lost_female = 15.97 if Sex == "Female" & 75 <= Age & Age < 80
+replace years_lost_female = 12.01 if Sex == "Female" & 80 <= Age & Age < 85
+replace years_lost_female = 8.51 if Sex == "Female" & 85 <= Age & Age < 90
+replace years_lost_female = 5.71 if Sex == "Female" & 90 <= Age
+
+# will at some point need to go back and change ICER to be consistent new assumptions made here
 
 ##Actual
 IV_fluid_prior_to_admit_wt
