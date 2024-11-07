@@ -114,6 +114,22 @@ joint_prob_vec_who_orig[8] <- mean(with(data_use, actual_dehydrat_cat == 'Severe
 joint_prob_vec_who_orig[9] <- mean(with(data_use, actual_dehydrat_cat == 'Severe' & who_dehydrat_cat == 'Severe'))
 
 
+##Useful Functions
+# implementing DALYs
+five_yr_age_buckets <- seq(0, 90, 5)
+resid_life_expect_at_age_male <- c(81.41, 76.63, 71.66, 66.69, 61.77, 56.91, 52.03, 47.18,
+                                   42.35, 37.57, 32.89, 28.34, 23.97, 19.83, 15.96, 12.41, 9.18,
+                                   6.46, 4.41)
+
+resid_life_expect_at_age_female <- c(87.45, 82.66, 77.69, 72.72, 67.77, 62.84, 57.91,
+                                     53, 48.11, 43.26, 38.49, 33.79, 29.17, 24.63, 20.21, 15.97,
+                                     12.01, 8.51, 5.71)
+
+resid_life_interp_fxn_male <- splinefun(five_yr_age_buckets, resid_life_expect_at_age_male)
+
+resid_life_interp_fxn_female <- splinefun(five_yr_age_buckets, resid_life_expect_at_age_female)
+
+##Setting Up Bootstrap
 
 B <- 50 #number of bootstrap samples 
 N <- nrow(data_use) #number of observations per bootstrap dataset
@@ -126,6 +142,10 @@ colnames(mean_cost_boot_mat) <- c("mean_hosp_costs", "mean_hosp_costs_severe_onl
 					 "mean_IV_fluid_costs_who", "mean_IV_fluid_costs_nirudak", 
 					"mean_ORS_fluid_costs_act_who", "mean_ORS_fluid_costs_act_nirudak",
 					"mean_IV_fluid_costs_act_who", "mean_IV_fluid_costs_act_nirudak")
+mean_dalys_boot_mat_all <- mean_dalys_boot_mat_specific <- data.frame(matrix(NA, nrow=B, ncol=2))
+colnames(mean_dalys_boot_mat_all) <- colnames(mean_dalys_boot_mat_specific) <- c("who", "nirudak")
+mean_YLL_boot_mat_all <- mean_YLL_boot_mat_specific <- data.frame(matrix(NA, nrow=B, ncol=2))
+colnames(mean_YLL_boot_mat_all) <- colnames(mean_YLL_boot_mat_specific) <- c("who", "nirudak")
 
 ##Hospital Costs in BDT
 ##IV and ORS Costs in BDT
@@ -134,6 +154,8 @@ IV_tube_and_solution_price <- 14.58
 pair_gloves_price <- 6.86
 butterfly_needle_price <- 11.15
 IV_fixed_unit_cost <- IV_tube_and_solution_price + pair_gloves_price + butterfly_needle_price
+
+
 
 ################################################################ BEGIN BOOTSTRAP
 
@@ -163,8 +185,10 @@ mean_cost_boot_mat[i, "mean_hosp_costs_severe_only_who"] <- with(data_tmp, mean(
 # revist this
 # people who die will incur productivity costs
 # take the average yearly wage * remaining lifetime
-# detailed approach: for anyone who died - mean income per year (mean(data_use$monthly_income))*12 - every year of life they lose, they lose that amount
-# assume that people with Severe dehydration lose work whether they're in the hospital or not, so the model does not affect short term productivity costs
+# detailed approach: for anyone who died - mean income per year (mean(data_use$monthly_income))*12 - 
+# every year of life they lose, they lose that amount
+# assume that people with Severe dehydration lose work whether they're in the hospital or not, 
+# so the model does not affect short term productivity costs
 
 #ORS fluid variable costs
 ORS_fluid_cost_per_ml <- 0.0054
@@ -261,6 +285,110 @@ joint_prob_vec_who_tmp[9] <- mean(with(data_tmp, actual_dehydrat_cat == 'Severe'
 joint_prob_vec_who_boot_mat[i, ] <- joint_prob_vec_who_tmp
 joint_prob_vec_nirudak_boot_mat[i, ] <- joint_prob_vec_nirudak_tmp
 
+## Implementing DALYs
+
+# nirudak
+mean_YLL_among_dead_nirudak_male <- mean(resid_life_interp_fxn_male(as.numeric(unlist(data_tmp[data_tmp$male == 1 & data_tmp$actual_dehydrat_cat == "Severe" &
+                                                                                                 data_tmp$nirudak_dehydrat_cat %in% c("No", "Some"), "age"]))))
+
+mean_YLL_among_dead_nirudak_female <- mean(resid_life_interp_fxn_female(as.numeric(unlist(data_tmp[data_tmp$male == 0 & data_tmp$actual_dehydrat_cat == "Severe" &
+                                                                                                     data_tmp$nirudak_dehydrat_cat %in% c("No", "Some"), "age"]))))
+
+# hypothetical overtreat NIRUDAK
+mean_YLL_among_dead_nirudak_male_overtreat <- mean(resid_life_interp_fxn_male(as.numeric(unlist(data_tmp[data_tmp$male == 1 & data_tmp$nirudak_dehydrat_cat == "Severe" &
+                                                                                                           data_tmp$actual_dehydrat_cat %in% c("No", "Some"), "age"]))))
+
+mean_YLL_among_dead_nirudak_female_overtreat <- mean(resid_life_interp_fxn_female(as.numeric(unlist(data_tmp[data_tmp$male == 0 & data_tmp$nirudak_dehydrat_cat == "Severe" &
+                                                                                                               data_tmp$actual_dehydrat_cat %in% c("No", "Some"), "age"]))))
+
+
+# who
+mean_YLL_among_dead_who_male <- mean(resid_life_interp_fxn_male(as.numeric(unlist(data_tmp[data_tmp$male == 1 & data_tmp$actual_dehydrat_cat == "Severe" &
+                                                                                             data_tmp$who_dehydrat_cat %in% c("No", "Some"), "age"]))))
+
+mean_YLL_among_dead_who_female <- mean(resid_life_interp_fxn_female(as.numeric(unlist(data_tmp[data_tmp$male == 0 & data_tmp$actual_dehydrat_cat == "Severe" & 
+                                                                                                 data_tmp$who_dehydrat_cat %in% c("No", "Some"), "age"]))))
+
+
+# WHO overtreat (hypothetical)
+mean_YLL_among_dead_who_male_overtreat <- mean(resid_life_interp_fxn_male(as.numeric(unlist(data_tmp[data_tmp$male == 1 & data_tmp$who_dehydrat_cat == "Severe" &
+                                                                                                       data_tmp$actual_dehydrat_cat %in% c("No", "Some"), "age"]))))
+
+mean_YLL_among_dead_who_female_overtreat <- mean(resid_life_interp_fxn_female(as.numeric(unlist(data_tmp[data_tmp$male == 0 & data_tmp$who_dehydrat_cat == "Severe" &
+                                                                                                           data_tmp$actual_dehydrat_cat %in% c("No", "Some"), "age"]))))
+
+# nirudak & who 
+total_YLL_among_dead_who <- (mean_YLL_among_dead_who_female + mean_YLL_among_dead_who_male)/2
+total_YLL_among_dead_nirudak <- (mean_YLL_among_dead_nirudak_female + mean_YLL_among_dead_nirudak_male)/2
+
+total_YLL_among_dead_who_overtreat <- (mean_YLL_among_dead_who_female_overtreat + mean_YLL_among_dead_who_male_overtreat)/2
+total_YLL_among_dead_nirudak_overtreat <- (mean_YLL_among_dead_nirudak_female_overtreat + mean_YLL_among_dead_nirudak_male_overtreat)/2
+
+
+nirudak_YLL_vec <- rep(0, 9)
+
+nirudak_YLL_vec[7:8] <- total_YLL_among_dead_nirudak
+nirudak_YLL_vec[c(3,6)] <- total_YLL_among_dead_nirudak_overtreat
+names(nirudak_YLL_vec) <- names(joint_prob_vec_nirudak_orig)
+
+who_YLL_vec <- rep(0, 9)
+who_YLL_vec[7:8] <- total_YLL_among_dead_who
+who_YLL_vec[c(3,6)] <- total_YLL_among_dead_who_overtreat
+names(who_YLL_vec) <- names(joint_prob_vec_who_orig)
+
+# whole sample
+mean_YLL_among_dead_all_male <- mean(resid_life_interp_fxn_male(as.numeric(unlist(data_tmp[data_tmp$male == 1 & data_tmp$actual_dehydrat_cat == "Severe","age"]))))
+
+mean_YLL_among_dead_all_female <- mean(resid_life_interp_fxn_female(as.numeric(unlist(data_tmp[data_tmp$male == 0 & data_tmp$actual_dehydrat_cat == "Severe", "age"]))))
+
+total_YLL_among_dead_all <- (mean_YLL_among_dead_all_male + mean_YLL_among_dead_all_female)/2
+
+all_YLL_vec <- rep(0, 9)
+all_YLL_vec[7:8] <- total_YLL_among_dead_all
+all_YLL_vec[c(3,6)] <- total_YLL_among_dead_all
+names(all_YLL_vec) <- names(joint_prob_vec_nirudak_orig)
+
+# disutility aka years lost to disability (YLD) — seizures from Sharifi paper
+nirudak_YLD_vec <- rep(0, 9)
+who_YLD_vec <- rep(0, 9)
+names(nirudak_YLD_vec) <- names(joint_prob_vec_nirudak_orig)
+names(who_YLD_vec) <- names(joint_prob_vec_who_orig)
+# for now, assume no disutility
+# morbidity (YLD) — setting to 0 for now
+branch_morbidity_prob <- rep(0,9)
+names(branch_morbidity_prob) <- names(joint_prob_vec_nirudak_orig)
+
+branch_death_prob <- rep(0,9)
+names(branch_death_prob) <- names(joint_prob_vec_nirudak_orig)
+# can change the value below if we make the assumption less crazy
+prob_die_undertreat <- 1
+branch_death_prob[7:8] <- prob_die_undertreat
+
+# using the mean life years lost calculated based on the age of people undertreated by each
+# specific model
+mean_YLL_nirudak_specific <- as.numeric((joint_prob_vec_nirudak_tmp * branch_death_prob) %*% nirudak_YLL_vec)
+mean_YLL_who_specific <- as.numeric((joint_prob_vec_who_tmp * branch_death_prob) %*% who_YLL_vec)
+
+# using the mean life years lost calculated based on the age of everyone who had Severe dehydration
+# this gives us the same age distribution across both models (both arms)
+mean_YLL_nirudak_all <- as.numeric((joint_prob_vec_nirudak_tmp * branch_death_prob) %*% all_YLL_vec)
+mean_YLL_who_all <- as.numeric((joint_prob_vec_who_tmp * branch_death_prob) %*% all_YLL_vec)
+
+# for YLD (years lost to disability)
+mean_YLD_nirudak <- as.numeric((joint_prob_vec_nirudak_tmp * branch_morbidity_prob) %*% nirudak_YLD_vec)
+mean_YLD_who <- as.numeric((joint_prob_vec_who_tmp * branch_morbidity_prob) %*% who_YLD_vec)
+
+mean_DALYs_lost_nirudak_specific <- sum(mean_YLL_nirudak_specific, mean_YLD_nirudak)
+mean_DALYs_lost_who_specific <- sum(mean_YLL_who_specific, mean_YLD_who)
+
+mean_DALYs_lost_nirudak_all <- sum(mean_YLL_nirudak_all, mean_YLD_nirudak)
+mean_DALYs_lost_who_all <- sum(mean_YLL_who_all, mean_YLD_who)
+
+mean_dalys_boot_mat_all[i,] <- c(mean_DALYs_lost_who_all, mean_DALYs_lost_nirudak_all)
+mean_dalys_boot_mat_specific[i,] <- c(mean_DALYs_lost_who_specific, mean_DALYs_lost_nirudak_specific)
+
+mean_YLL_boot_mat_all[i,] <- c(mean_YLL_who_all, mean_YLL_nirudak_all)
+mean_YLL_boot_mat_specific[i,] <- c(mean_YLL_who_specific, mean_YLL_nirudak_specific)
 }
 
 ################################################################## END BOOTSTRAP
@@ -301,6 +429,53 @@ ref_nirudak_mean_hosp_costs_vec <- mean_cost_boot_mat[,"mean_hosp_costs_severe_o
 # assume that people lose productive time while severely dehydrated but that would be equally distributed among arms
 # but people would differentially lose productivity if they die (as a result of having Severe dehydration but being treated as Some or None)
 
+mean_annual_wage <- 200000
+
+productivity_costs_nirduak_specific_vec <- mean_YLL_boot_mat_specific[,2]*mean_annual_wage
+productivity_costs_who_specific_vec <- mean_YLL_boot_mat_specific[,1]*mean_annual_wage
+
+productivity_costs_nirduak_all_vec <- mean_YLL_boot_mat_all[,2]*mean_annual_wage
+productivity_costs_who_all_vec <- mean_YLL_boot_mat_all[,1]*mean_annual_wage
+
+# fluid has 2 scenarios
+#### ref
+#### scen
+# hospital has 1 scenarios
+# productivity has 2 scenarios
+#### specific
+#### all
+
+# REF
+total_cost_nirduak_fluid_ref_all_vec <- productivity_costs_nirduak_all_vec + ref_nirudak_mean_hosp_costs_vec +
+  ref_nirudak_pred_total_ORS_mean_costs_vec + ref_nirudak_pred_total_IV_mean_costs_vec
+
+total_cost_nirduak_fluid_ref_spec_vec <- productivity_costs_nirduak_specific_vec + ref_nirudak_mean_hosp_costs_vec +
+  ref_nirudak_pred_total_ORS_mean_costs_vec + ref_nirudak_pred_total_IV_mean_costs_vec
+
+total_cost_who_fluid_ref_all_vec <- productivity_costs_who_all_vec + ref_who_mean_hosp_costs_vec + 
+  ref_who_pred_total_ORS_mean_costs_vec + ref_who_pred_total_IV_mean_costs_vec
+
+total_cost_who_fluid_ref_spec_vec <- productivity_costs_who_specific_vec + ref_who_mean_hosp_costs_vec + 
+  ref_who_pred_total_ORS_mean_costs_vec + ref_who_pred_total_IV_mean_costs_vec
+
+# SCEN
+total_cost_nirduak_fluid_scen_all_vec <- productivity_costs_nirduak_all_vec + ref_nirudak_mean_hosp_costs_vec +
+  scen_nirudak_pred_total_ORS_mean_costs_vec + scen_nirudak_pred_total_IV_mean_costs_vec
+
+total_cost_nirduak_fluid_scen_spec_vec <- productivity_costs_nirduak_specific_vec + ref_nirudak_mean_hosp_costs_vec +
+  scen_nirudak_pred_total_ORS_mean_costs_vec + scen_nirudak_pred_total_IV_mean_costs_vec
+
+total_cost_who_fluid_scen_all_vec <- productivity_costs_who_all_vec + ref_who_mean_hosp_costs_vec + 
+  scen_who_pred_total_ORS_mean_costs_vec + scen_who_pred_total_IV_mean_costs_vec
+
+total_cost_who_fluid_scen_spec_vec <- productivity_costs_who_specific_vec + ref_who_mean_hosp_costs_vec + 
+  scen_who_pred_total_ORS_mean_costs_vec + scen_who_pred_total_IV_mean_costs_vec
+
+# to-do: figure out value in Bangladesh currency
+daly_value <- 100000
+
+# next: incremental DALYs
+# convert cost to health (instead of ICER)
 
 # calculating fluid costs for NIRUDAK based on model predicted dehydration categories
 # these next two items are just sanity checks
@@ -315,19 +490,6 @@ ref_nirudak_mean_hosp_costs_vec <- mean_cost_boot_mat[,"mean_hosp_costs_severe_o
 #  rep(0, length(which(data_use$who_dehydrat_cat == "No"))))
 
 ################################################################################
-# implementing DALYs
-five_yr_age_buckets <- seq(0, 90, 5)
-resid_life_expect_at_age_male <- c(81.41, 76.63, 71.66, 66.69, 61.77, 56.91, 52.03, 47.18,
-                                   42.35, 37.57, 32.89, 28.34, 23.97, 19.83, 15.96, 12.41, 9.18,
-                                   6.46, 4.41)
-
-resid_life_expect_at_age_female <- c(87.45, 82.66, 77.69, 72.72, 67.77, 62.84, 57.91,
-                                    53, 48.11, 43.26, 38.49, 33.79, 29.17, 24.63, 20.21, 15.97,
-                                    12.01, 8.51, 5.71)
-
-resid_life_interp_fxn_male <- splinefun(five_yr_age_buckets, resid_life_expect_at_age_male)
-
-resid_life_interp_fxn_female <- splinefun(five_yr_age_buckets, resid_life_expect_at_age_female)
 
 # implementing DALYs with real data first
 
@@ -350,7 +512,8 @@ mean_YLL_among_dead_nirudak_female_overtreat <- mean(resid_life_interp_fxn_femal
 mean_YLL_among_dead_who_male <- mean(resid_life_interp_fxn_male(as.numeric(unlist(data_use[data_use$male == 1 & data_use$actual_dehydrat_cat == "Severe" &
                                                                                                  data_use$who_dehydrat_cat %in% c("No", "Some"), "age"]))))
 
-mean_YLL_among_dead_who_female <- mean(resid_life_interp_fxn_female(as.numeric(unlist(data_use[data_use$male == 0 & data_use$actual_dehydrat_cat == "Severe" &
+mean_YLL_among_dead_who_female <- mean(resid_life_interp_fxn_female(as.numeric(unlist(data_use[data_use$male == 0 & data_use$actual_dehydrat_cat == "Severe" & 
+                                                                                                 data_use$who_dehydrat_cat %in% c("No", "Some"), "age"]))))
 
 
 # WHO overtreat (hypothetical)
@@ -360,7 +523,6 @@ mean_YLL_among_dead_who_male_overtreat <- mean(resid_life_interp_fxn_male(as.num
 mean_YLL_among_dead_who_female_overtreat <- mean(resid_life_interp_fxn_female(as.numeric(unlist(data_use[data_use$male == 0 & data_use$who_dehydrat_cat == "Severe" &
                                                                                                      data_use$actual_dehydrat_cat %in% c("No", "Some"), "age"]))))
 
-                                                                                                                                                                                                      data_use$who_dehydrat_cat %in% c("No", "Some"), "age"]))))
 # nirudak & who 
 total_YLL_among_dead_who <- (mean_YLL_among_dead_who_female + mean_YLL_among_dead_who_male)/2
 total_YLL_among_dead_nirudak <- (mean_YLL_among_dead_nirudak_female + mean_YLL_among_dead_nirudak_male)/2
