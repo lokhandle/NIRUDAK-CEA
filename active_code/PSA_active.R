@@ -387,6 +387,7 @@ mean_DALYs_lost_who_all <- sum(mean_YLL_who_all, mean_YLD_who)
 mean_dalys_boot_mat_all[i,] <- c(mean_DALYs_lost_who_all, mean_DALYs_lost_nirudak_all)
 mean_dalys_boot_mat_specific[i,] <- c(mean_DALYs_lost_who_specific, mean_DALYs_lost_nirudak_specific)
 
+# to calculate productivity costs
 mean_YLL_boot_mat_all[i,] <- c(mean_YLL_who_all, mean_YLL_nirudak_all)
 mean_YLL_boot_mat_specific[i,] <- c(mean_YLL_who_specific, mean_YLL_nirudak_specific)
 }
@@ -395,6 +396,9 @@ mean_YLL_boot_mat_specific[i,] <- c(mean_YLL_who_specific, mean_YLL_nirudak_spec
 
 colnames(joint_prob_vec_who_boot_mat) <- colnames(joint_prob_vec_nirudak_boot_mat) <- names(joint_prob_vec_nirudak_tmp)
 
+####Calculate DALYs
+incremental_mean_dalys_all <- mean_dalys_boot_mat_all[,2] - mean_dalys_boot_mat_all[,1]
+incremental_mean_dalys_spec <- mean_dalys_boot_mat_specific[,2] - mean_dalys_boot_mat_specific[,1]
 
 ####Calculate Costs
 
@@ -431,6 +435,8 @@ ref_nirudak_mean_hosp_costs_vec <- mean_cost_boot_mat[,"mean_hosp_costs_severe_o
 
 mean_annual_wage <- 200000
 
+# discounting will bring down the impact of productivity costs on total costs
+# productivity costs are one form of health costs
 productivity_costs_nirduak_specific_vec <- mean_YLL_boot_mat_specific[,2]*mean_annual_wage
 productivity_costs_who_specific_vec <- mean_YLL_boot_mat_specific[,1]*mean_annual_wage
 
@@ -446,36 +452,95 @@ productivity_costs_who_all_vec <- mean_YLL_boot_mat_all[,1]*mean_annual_wage
 #### all
 
 # REF
-total_cost_nirduak_fluid_ref_all_vec <- productivity_costs_nirduak_all_vec + ref_nirudak_mean_hosp_costs_vec +
+mean_total_cost_nirduak_ref_all_vec <- productivity_costs_nirduak_all_vec + ref_nirudak_mean_hosp_costs_vec +
   ref_nirudak_pred_total_ORS_mean_costs_vec + ref_nirudak_pred_total_IV_mean_costs_vec
 
-total_cost_nirduak_fluid_ref_spec_vec <- productivity_costs_nirduak_specific_vec + ref_nirudak_mean_hosp_costs_vec +
+mean_total_cost_nirduak_ref_spec_vec <- productivity_costs_nirduak_specific_vec + ref_nirudak_mean_hosp_costs_vec +
   ref_nirudak_pred_total_ORS_mean_costs_vec + ref_nirudak_pred_total_IV_mean_costs_vec
 
-total_cost_who_fluid_ref_all_vec <- productivity_costs_who_all_vec + ref_who_mean_hosp_costs_vec + 
+mean_total_cost_who_ref_all_vec <- productivity_costs_who_all_vec + ref_who_mean_hosp_costs_vec + 
   ref_who_pred_total_ORS_mean_costs_vec + ref_who_pred_total_IV_mean_costs_vec
 
-total_cost_who_fluid_ref_spec_vec <- productivity_costs_who_specific_vec + ref_who_mean_hosp_costs_vec + 
+mean_total_cost_who_ref_spec_vec <- productivity_costs_who_specific_vec + ref_who_mean_hosp_costs_vec + 
   ref_who_pred_total_ORS_mean_costs_vec + ref_who_pred_total_IV_mean_costs_vec
+
+# incremental costs
+incremental_mean_total_cost_ref_all <- mean_total_cost_nirduak_ref_all_vec - mean_total_cost_who_ref_all_vec
+  
+incremental_mean_total_cost_ref_spec <- mean_total_cost_nirduak_ref_spec_vec - mean_total_cost_who_ref_spec_vec
 
 # SCEN
-total_cost_nirduak_fluid_scen_all_vec <- productivity_costs_nirduak_all_vec + ref_nirudak_mean_hosp_costs_vec +
+mean_total_cost_nirduak_scen_all_vec <- productivity_costs_nirduak_all_vec + ref_nirudak_mean_hosp_costs_vec +
   scen_nirudak_pred_total_ORS_mean_costs_vec + scen_nirudak_pred_total_IV_mean_costs_vec
 
-total_cost_nirduak_fluid_scen_spec_vec <- productivity_costs_nirduak_specific_vec + ref_nirudak_mean_hosp_costs_vec +
+mean_total_cost_nirduak_scen_spec_vec <- productivity_costs_nirduak_specific_vec + ref_nirudak_mean_hosp_costs_vec +
   scen_nirudak_pred_total_ORS_mean_costs_vec + scen_nirudak_pred_total_IV_mean_costs_vec
 
-total_cost_who_fluid_scen_all_vec <- productivity_costs_who_all_vec + ref_who_mean_hosp_costs_vec + 
+mean_total_cost_who_scen_all_vec <- productivity_costs_who_all_vec + ref_who_mean_hosp_costs_vec + 
   scen_who_pred_total_ORS_mean_costs_vec + scen_who_pred_total_IV_mean_costs_vec
 
-total_cost_who_fluid_scen_spec_vec <- productivity_costs_who_specific_vec + ref_who_mean_hosp_costs_vec + 
+mean_total_cost_who_scen_spec_vec <- productivity_costs_who_specific_vec + ref_who_mean_hosp_costs_vec + 
   scen_who_pred_total_ORS_mean_costs_vec + scen_who_pred_total_IV_mean_costs_vec
+
+# incremental costs
+incremental_mean_total_cost_scen_all <- mean_total_cost_nirduak_scen_all_vec - mean_total_cost_who_scen_all_vec
+  
+incremental_mean_total_cost_scen_spec <- mean_total_cost_nirduak_scen_spec_vec - mean_total_cost_who_scen_spec_vec
+
+####Calculate Net Monetary Benefit 
 
 # to-do: figure out value in Bangladesh currency
-daly_value <- 100000
+daly_wtp <- 100000
+
+# dollar value of benefit minus dollar value of cost
+# incremental DALYs and costs are defined as NIRUDAK minus WHO
+## can either do this as opportunity cost of money or via the demand-side
+increm_net_monetary_benefit_ref_all <- -incremental_mean_dalys_all*daly_wtp  - incremental_mean_total_cost_ref_all # taking the negative gives us incremental DALYs saved
+increm_net_monetary_benefit_ref_spec <- -incremental_mean_dalys_spec*daly_wtp - incremental_mean_total_cost_ref_spec
+
+increm_net_monetary_benefit_scen_all <- -incremental_mean_dalys_all*daly_wtp - incremental_mean_total_cost_scen_all
+increm_net_monetary_benefit_scen_spec <- -incremental_mean_dalys_spec*daly_wtp - incremental_mean_total_cost_scen_spec
+
+# nmb = net monetary benefit
+expected_increm_nmb_ref_all<- mean(increm_net_monetary_benefit_ref_all)
+expected_increm_nmb_ref_spec <- mean(increm_net_monetary_benefit_ref_spec)
+
+expected_increm_nmb_scen_all <- mean(increm_net_monetary_benefit_scen_all)
+expected_increm_nmb_scen_spec <-mean(increm_net_monetary_benefit_scen_spec)
+
+####Making the Plot
+wtp_val_vec <- seq(25000, 250000, by=25000)
+
+increm_net_monetary_benefit_ref_all_mat <- matrix(data = NA, nrow = 50, ncol = length(wtp_val_vec))
+
+for (i in 1:length(wtp_val_vec)){ 
+  increm_net_monetary_benefit_ref_all_mat[,i]=-incremental_mean_dalys_all*wtp_val_vec[i] - incremental_mean_total_cost_ref_all
+  
+} 
+
+# will plot these 2 on the same plot
+expected_increm_nmb_ref_all_vec <- colMeans(increm_net_monetary_benefit_ref_all_mat)
+prob_nirudak_optimal_vec <- colMeans(increm_net_monetary_benefit_ref_all_mat > 0)
+
+# need to replicate the above for the other 3 scenarios
+
+# also want to have a version of the cost without productivity (health care perspective)
+
+
+
+
+
+
+
+
+
+
+
+
 
 # next: incremental DALYs
 # convert cost to health (instead of ICER)
+
 
 # calculating fluid costs for NIRUDAK based on model predicted dehydration categories
 # these next two items are just sanity checks
@@ -490,6 +555,10 @@ daly_value <- 100000
 #  rep(0, length(which(data_use$who_dehydrat_cat == "No"))))
 
 ################################################################################
+
+
+
+
 
 # implementing DALYs with real data first
 
