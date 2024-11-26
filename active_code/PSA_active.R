@@ -3,7 +3,7 @@ user = 'Anagha'
 
 ##load packages
 library(tidyverse)
-
+library(dplyr)
 
 ##Set working directory
 jonah_work_dir <- "C:/Users/Jonah/Desktop/NIRUDAK-CEA"
@@ -23,7 +23,7 @@ if (user=='Anagha'){
 tmp_data <- readxl::read_excel(file.path("data", "NIRUDAK_over5yrs_raw_data_.xlsx"))
 data_tmp1 <- tmp_data %>% rename(id="Study ID") %>% rename(admit_date="Admit Date") %>% 
 		rename(admit_time="Admit Time") %>% mutate(male=as.integer(Sex=="Male")) %>%
-		select(-c(Sex, sex1)) %>% rename(age=Age) %>% rename(admit_wt="Admit Weight") %>%
+    dplyr::select(-c(Sex, sex1)) %>% rename(age=Age) %>% rename(admit_wt="Admit Weight") %>%
 		rename(IV_fluid_prior_to_admit_wt="IV Fluid Prior to Getting Admit Weight")
 fu_names_to_change <- names(data_tmp1)[7:76]
 colnames(data_tmp1)[7:76] <- gsub("Fluid", "fluid", gsub("Time", "time", gsub("Date", "date", 
@@ -131,7 +131,7 @@ resid_life_interp_fxn_female <- splinefun(five_yr_age_buckets, resid_life_expect
 
 ##Setting Up Bootstrap
 
-B <- 50 #number of bootstrap samples 
+B <- 2000 #number of bootstrap samples 
 N <- nrow(data_use) #number of observations per bootstrap dataset
 joint_prob_vec_who_boot_mat <- joint_prob_vec_nirudak_boot_mat <- matrix(NA, nrow=B, ncol=9)
 row_indices <- 1:N
@@ -397,6 +397,8 @@ mean_YLL_boot_mat_specific[i,] <- c(mean_YLL_who_specific, mean_YLL_nirudak_spec
 colnames(joint_prob_vec_who_boot_mat) <- colnames(joint_prob_vec_nirudak_boot_mat) <- names(joint_prob_vec_nirudak_tmp)
 
 ####Calculate DALYs
+# more DALYs are bad
+# first arg = who, second arg = nirudak
 incremental_mean_dalys_all <- mean_dalys_boot_mat_all[,2] - mean_dalys_boot_mat_all[,1]
 incremental_mean_dalys_spec <- mean_dalys_boot_mat_specific[,2] - mean_dalys_boot_mat_specific[,1]
 
@@ -451,7 +453,7 @@ productivity_costs_who_all_vec <- mean_YLL_boot_mat_all[,1]*mean_annual_wage
 #### specific
 #### all
 
-# REF
+# REF — societal perspective (meaning including productivity)
 mean_total_cost_nirduak_ref_all_vec <- productivity_costs_nirduak_all_vec + ref_nirudak_mean_hosp_costs_vec +
   ref_nirudak_pred_total_ORS_mean_costs_vec + ref_nirudak_pred_total_IV_mean_costs_vec
 
@@ -464,12 +466,33 @@ mean_total_cost_who_ref_all_vec <- productivity_costs_who_all_vec + ref_who_mean
 mean_total_cost_who_ref_spec_vec <- productivity_costs_who_specific_vec + ref_who_mean_hosp_costs_vec + 
   ref_who_pred_total_ORS_mean_costs_vec + ref_who_pred_total_IV_mean_costs_vec
 
-# incremental costs
+
+# REF - this is the healthcare perspective (meaning EXcluding productivity)
+mean_total_cost_nirduak_ref_all_vec_hcs <-ref_nirudak_mean_hosp_costs_vec +
+  ref_nirudak_pred_total_ORS_mean_costs_vec + ref_nirudak_pred_total_IV_mean_costs_vec
+
+mean_total_cost_nirduak_ref_spec_vec_hcs <- ref_nirudak_mean_hosp_costs_vec +
+  ref_nirudak_pred_total_ORS_mean_costs_vec + ref_nirudak_pred_total_IV_mean_costs_vec
+
+mean_total_cost_who_ref_all_vec_hcs <- ref_who_mean_hosp_costs_vec + 
+  ref_who_pred_total_ORS_mean_costs_vec + ref_who_pred_total_IV_mean_costs_vec
+
+mean_total_cost_who_ref_spec_vec_hcs <- ref_who_mean_hosp_costs_vec + 
+  ref_who_pred_total_ORS_mean_costs_vec + ref_who_pred_total_IV_mean_costs_vec
+
+# incremental costs - societal (w/ productivity)
 incremental_mean_total_cost_ref_all <- mean_total_cost_nirduak_ref_all_vec - mean_total_cost_who_ref_all_vec
   
 incremental_mean_total_cost_ref_spec <- mean_total_cost_nirduak_ref_spec_vec - mean_total_cost_who_ref_spec_vec
 
-# SCEN
+# incremental costs - healthcare (w/out productivity)
+incremental_mean_total_cost_ref_all_hcs <- mean_total_cost_nirduak_ref_all_vec_hcs - mean_total_cost_who_ref_all_vec_hcs
+
+incremental_mean_total_cost_ref_spec_hcs <- mean_total_cost_nirduak_ref_spec_vec_hcs - mean_total_cost_who_ref_spec_vec_hcs
+
+############
+
+# SCEN - societal perspective (including productivity)
 mean_total_cost_nirduak_scen_all_vec <- productivity_costs_nirduak_all_vec + ref_nirudak_mean_hosp_costs_vec +
   scen_nirudak_pred_total_ORS_mean_costs_vec + scen_nirudak_pred_total_IV_mean_costs_vec
 
@@ -482,47 +505,112 @@ mean_total_cost_who_scen_all_vec <- productivity_costs_who_all_vec + ref_who_mea
 mean_total_cost_who_scen_spec_vec <- productivity_costs_who_specific_vec + ref_who_mean_hosp_costs_vec + 
   scen_who_pred_total_ORS_mean_costs_vec + scen_who_pred_total_IV_mean_costs_vec
 
-# incremental costs
+# SCEN - healthcare sector perspective (excluding productivity)
+mean_total_cost_nirduak_scen_all_vec_hcs <- ref_nirudak_mean_hosp_costs_vec +
+  scen_nirudak_pred_total_ORS_mean_costs_vec + scen_nirudak_pred_total_IV_mean_costs_vec
+
+mean_total_cost_nirduak_scen_spec_vec_hcs <- ref_nirudak_mean_hosp_costs_vec +
+  scen_nirudak_pred_total_ORS_mean_costs_vec + scen_nirudak_pred_total_IV_mean_costs_vec
+
+mean_total_cost_who_scen_all_vec_hcs <- ref_who_mean_hosp_costs_vec + 
+  scen_who_pred_total_ORS_mean_costs_vec + scen_who_pred_total_IV_mean_costs_vec
+
+mean_total_cost_who_scen_spec_vec_hcs <- ref_who_mean_hosp_costs_vec + 
+  scen_who_pred_total_ORS_mean_costs_vec + scen_who_pred_total_IV_mean_costs_vec
+
+
+# incremental costs - societal
 incremental_mean_total_cost_scen_all <- mean_total_cost_nirduak_scen_all_vec - mean_total_cost_who_scen_all_vec
   
 incremental_mean_total_cost_scen_spec <- mean_total_cost_nirduak_scen_spec_vec - mean_total_cost_who_scen_spec_vec
 
+# incremental costs - healthcare sector
+incremental_mean_total_cost_scen_all_hcs <- mean_total_cost_nirduak_scen_all_vec_hcs - mean_total_cost_who_scen_all_vec_hcs
+
+incremental_mean_total_cost_scen_spec_hcs <- mean_total_cost_nirduak_scen_spec_vec_hcs - mean_total_cost_who_scen_spec_vec_hcs
+
+
 ####Calculate Net Monetary Benefit 
 
 # to-do: figure out value in Bangladesh currency
-daly_wtp <- 100000
+daly_wtp_vec <- seq(25000, 200000, by = 25000)
+
+# societal perspective
+increm_net_monetary_benefit_ref_all_mat <- matrix(data = NA, nrow = B, ncol = length(daly_wtp_vec))
+increm_net_monetary_benefit_ref_spec_mat <- matrix(data = NA, nrow = B, ncol = length(daly_wtp_vec))
+increm_net_monetary_benefit_scen_all_mat <- matrix(data = NA, nrow = B, ncol = length(daly_wtp_vec))
+increm_net_monetary_benefit_scen_spec_mat <- matrix(data = NA, nrow = B, ncol = length(daly_wtp_vec))
+
+# healthcare sector perspective
+increm_net_monetary_benefit_ref_all_mat_hcs <- matrix(data = NA, nrow = B, ncol = length(daly_wtp_vec))
+increm_net_monetary_benefit_ref_spec_mat_hcs <- matrix(data = NA, nrow = B, ncol = length(daly_wtp_vec))
+increm_net_monetary_benefit_scen_all_mat_hcs <- matrix(data = NA, nrow = B, ncol = length(daly_wtp_vec))
+increm_net_monetary_benefit_scen_spec_mat_hcs <- matrix(data = NA, nrow = B, ncol = length(daly_wtp_vec))
+
+colnames(increm_net_monetary_benefit_ref_all_mat) <- 
+  colnames(increm_net_monetary_benefit_ref_spec_mat) <- 
+  colnames(increm_net_monetary_benefit_scen_all_mat) <- 
+  colnames(increm_net_monetary_benefit_scen_spec_mat) <- 
+  colnames(increm_net_monetary_benefit_ref_all_mat_hcs) <- 
+  colnames(increm_net_monetary_benefit_ref_spec_mat_hcs) <- 
+  colnames(increm_net_monetary_benefit_scen_all_mat_hcs) <- 
+  colnames(increm_net_monetary_benefit_scen_spec_mat_hcs) <- paste('wtp', daly_wtp_vec, sep='=')
+
+
+for (i in 1:length(daly_wtp_vec)){
+  
+temp_wtp <- daly_wtp_vec[i]
 
 # dollar value of benefit minus dollar value of cost
 # incremental DALYs and costs are defined as NIRUDAK minus WHO
 ## can either do this as opportunity cost of money or via the demand-side
-increm_net_monetary_benefit_ref_all <- -incremental_mean_dalys_all*daly_wtp  - incremental_mean_total_cost_ref_all # taking the negative gives us incremental DALYs saved
-increm_net_monetary_benefit_ref_spec <- -incremental_mean_dalys_spec*daly_wtp - incremental_mean_total_cost_ref_spec
+## taking negative DALYs -> positive = more effective
+## positive incremental costs = more expensive
+## standardized for how QALYs are done
 
-increm_net_monetary_benefit_scen_all <- -incremental_mean_dalys_all*daly_wtp - incremental_mean_total_cost_scen_all
-increm_net_monetary_benefit_scen_spec <- -incremental_mean_dalys_spec*daly_wtp - incremental_mean_total_cost_scen_spec
+#### societal perspective (including productivity)
+increm_net_monetary_benefit_ref_all_mat[,i] <- -incremental_mean_dalys_all*temp_wtp  - incremental_mean_total_cost_ref_all # taking the negative gives us incremental DALYs saved
+increm_net_monetary_benefit_ref_spec_mat[,i] <- -incremental_mean_dalys_spec*temp_wtp - incremental_mean_total_cost_ref_spec
 
-# nmb = net monetary benefit
-expected_increm_nmb_ref_all<- mean(increm_net_monetary_benefit_ref_all)
-expected_increm_nmb_ref_spec <- mean(increm_net_monetary_benefit_ref_spec)
+increm_net_monetary_benefit_scen_all_mat[,i] <- -incremental_mean_dalys_all*temp_wtp - incremental_mean_total_cost_scen_all
+increm_net_monetary_benefit_scen_spec_mat[,i] <- -incremental_mean_dalys_spec*temp_wtp - incremental_mean_total_cost_scen_spec
 
-expected_increm_nmb_scen_all <- mean(increm_net_monetary_benefit_scen_all)
-expected_increm_nmb_scen_spec <-mean(increm_net_monetary_benefit_scen_spec)
+#### healthcare perspective (excluding productivity)
+increm_net_monetary_benefit_ref_all_mat_hcs[,i] <- -incremental_mean_dalys_all*temp_wtp  - incremental_mean_total_cost_ref_all_hcs # taking the negative gives us incremental DALYs saved
+increm_net_monetary_benefit_ref_spec_mat_hcs[,i] <- -incremental_mean_dalys_spec*temp_wtp - incremental_mean_total_cost_ref_spec_hcs
+
+increm_net_monetary_benefit_scen_all_mat_hcs[,i] <- -incremental_mean_dalys_all*temp_wtp - incremental_mean_total_cost_scen_all_hcs
+increm_net_monetary_benefit_scen_spec_mat_hcs[,i] <- -incremental_mean_dalys_spec*temp_wtp - incremental_mean_total_cost_scen_spec_hcs
+
+
+}
+
+# calculated expected incremental net monetary benefit - societal perspective // nmb = net monetary benefit
+expected_increm_nmb_ref_all <- colMeans(increm_net_monetary_benefit_ref_all_mat)
+expected_increm_nmb_ref_spec <- colMeans(increm_net_monetary_benefit_ref_spec_mat)
+expected_increm_nmb_scen_all <- colMeans(increm_net_monetary_benefit_scen_all_mat)
+expected_increm_nmb_scen_spec <- colMeans(increm_net_monetary_benefit_scen_spec_mat)
+
+# calculate probability optimal strategies - societal perspective
+prob_nirudak_optimal_vec_ref_all <- colMeans(increm_net_monetary_benefit_ref_all_mat > 0)
+prob_nirudak_optimal_vec_ref_spec <- colMeans(increm_net_monetary_benefit_ref_spec_mat > 0)
+prob_nirudak_optimal_vec_scen_all <- colMeans(increm_net_monetary_benefit_scen_all_mat > 0)
+prob_nirudak_optimal_vec_scen_spec <- colMeans(increm_net_monetary_benefit_scen_spec_mat > 0)
+
+# calculated expected incremental net monetary benefit - healthcare perspective
+expected_increm_nmb_ref_all_hcs <- colMeans(increm_net_monetary_benefit_ref_all_mat_hcs)
+expected_increm_nmb_ref_spec_hcs <- colMeans(increm_net_monetary_benefit_ref_spec_mat_hcs)
+expected_increm_nmb_scen_all_hcs <- colMeans(increm_net_monetary_benefit_scen_all_mat_hcs)
+expected_increm_nmb_scen_spec_hcs <- colMeans(increm_net_monetary_benefit_scen_spec_mat_hcs)
+# calculate probability optimal strategies - healthcare perspective
+prob_nirudak_optimal_vec_ref_all_hcs <- colMeans(increm_net_monetary_benefit_ref_all_mat_hcs > 0)
+prob_nirudak_optimal_vec_ref_spec_hcs <- colMeans(increm_net_monetary_benefit_ref_spec_mat_hcs > 0)
+prob_nirudak_optimal_vec_scen_all_hcs <- colMeans(increm_net_monetary_benefit_scen_all_mat_hcs > 0)
+prob_nirudak_optimal_vec_scen_spec_hcs <- colMeans(increm_net_monetary_benefit_scen_spec_mat_hcs > 0)
 
 ####Making the Plot
-wtp_val_vec <- seq(25000, 250000, by=25000)
+# plot cost effectiveness acceptability curve (CEAC) & cost-effectiveness frontier (CEAF)
 
-increm_net_monetary_benefit_ref_all_mat <- matrix(data = NA, nrow = 50, ncol = length(wtp_val_vec))
-
-for (i in 1:length(wtp_val_vec)){ 
-  increm_net_monetary_benefit_ref_all_mat[,i]=-incremental_mean_dalys_all*wtp_val_vec[i] - incremental_mean_total_cost_ref_all
-  
-} 
-
-# will plot these 2 on the same plot
-expected_increm_nmb_ref_all_vec <- colMeans(increm_net_monetary_benefit_ref_all_mat)
-prob_nirudak_optimal_vec <- colMeans(increm_net_monetary_benefit_ref_all_mat > 0)
-
-# need to replicate the above for the other 3 scenarios
 
 # also want to have a version of the cost without productivity (health care perspective)
 
