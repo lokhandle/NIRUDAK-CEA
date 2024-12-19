@@ -1,0 +1,22 @@
+
+pdf(file = file.path(plots_dir, paste("reference_CEAF_discounted", "pdf", sep=".")), 
+	onefile = T, height = 6.5, width = 7.3, fonts = 'Times')
+
+plot(wtps, MCI_societal_discounted_prob, ylim=c(0, 1), xlim=c(0, 300), pch=20, cex=1.5, col='black',
+	xlab="WTP ($1,000's)", ylab="Prob Strategy is Optimal", main='CEAC & CEAF for MCI Cohort')
+lines(wtps, MCI_societal_discounted_prob, lty=2, col='black')
+lines(c(275, 300), c(mean(tail(MCI_societal_discounted_prob, 2)), tail(MCI_societal_discounted_prob, 1)), lty=1, col='black')
+points(wtps, (1-MCI_societal_discounted_prob), pch=17, cex=0.95, col='black')
+lines(head(wtps, -1), head((1-MCI_societal_discounted_prob), -1), lty=1, col='black')
+lines(c(250, 275), c((1-MCI_societal_discounted_prob)[5], mean((1-MCI_societal_discounted_prob)[5:6])), lty=1, col='black')
+lines(c(275, 300), c(mean(tail(1-MCI_societal_discounted_prob, 2)), tail(1-MCI_societal_discounted_prob, 1)), lty=3, col='black')
+points(wtps, MCI_HCS_discounted_prob, pch=20, cex=1.5, col='red')
+lines(wtps, MCI_HCS_discounted_prob, lty=2, col='red')
+points(wtps, (1-MCI_HCS_discounted_prob), pch=17, cex=0.95, col='red')
+lines(wtps, (1-MCI_HCS_discounted_prob), lty=1, col='red')
+legend('left', legend=c("Probability TAU is Optimal (Societal, r=3%)", 
+			"Probability Lecanemab is Optimal (Societal, r=3%)",
+			"Probability TAU is Optimal (HCS, r=3%)",
+			"Probability Lecanemab is Optimal (HCS, r=3%)"), 
+	col=c(rep('black', 2), rep('red', 2)), pch=c(17, 20, 17, 20))
+
