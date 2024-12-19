@@ -599,6 +599,7 @@ prob_nirudak_optimal_vec_scen_all <- colMeans(increm_net_monetary_benefit_scen_a
 prob_nirudak_optimal_vec_scen_spec <- colMeans(increm_net_monetary_benefit_scen_spec_mat > 0)
 
 # calculated expected incremental net monetary benefit - healthcare perspective
+# if the values on the left are positive, NIRUDAK is favored
 expected_increm_nmb_ref_all_hcs <- colMeans(increm_net_monetary_benefit_ref_all_mat_hcs)
 expected_increm_nmb_ref_spec_hcs <- colMeans(increm_net_monetary_benefit_ref_spec_mat_hcs)
 expected_increm_nmb_scen_all_hcs <- colMeans(increm_net_monetary_benefit_scen_all_mat_hcs)
@@ -611,7 +612,38 @@ prob_nirudak_optimal_vec_scen_spec_hcs <- colMeans(increm_net_monetary_benefit_s
 
 ####Making the Plot
 # plot cost effectiveness acceptability curve (CEAC) & cost-effectiveness frontier (CEAF)
-plot
+
+#pdf(file = file.path(plots_dir, paste("reference_CEAF_discounted", "pdf", sep=".")), 
+ #   onefile = T, height = 6.5, width = 7.3, fonts = 'Times')
+
+# replace with PPP
+bdt_usd_conversion <- 0.0084
+
+daly_wtp_vec_usd <- daly_wtp_vec * bdt_usd_conversion
+
+hcs_ref_all_nirudak_best_vec <- ifelse(expected_increm_nmb_ref_all_hcs > 0, 1, 0)
+
+# version of analysis being plotted: healthcare perspective, ref (model determines type and amount of fluid), all (revist what this means)
+plot(daly_wtp_vec_usd, prob_nirudak_optimal_vec_ref_all_hcs, ylim=c(0, 1), xlim=c(0, 2000), pch=20, cex=1.5, col='black',
+     xlab="WTP ($)", ylab="Prob Strategy is Optimal", main='CEAC & CEAF for Cohort')
+# the above shows at each WTP, which has the highest probability
+lines(daly_wtp_vec_usd, prob_nirudak_optimal_vec_ref_all_hcs, lty=1, col='black')
+
+
+lines(c(275, 300), c(mean(tail(prob_nirudak_optimal_vec_ref_all_hcs, 2)), tail(MCI_societal_discounted_prob, 1)), lty=1, col='black')
+points(daly_wtp_vec, (1-prob_nirudak_optimal_vec_ref_all_hcs), pch=17, cex=0.95, col='black')
+lines(head(daly_wtp_vec, -1), head((1-MCI_societal_discounted_prob), -1), lty=1, col='black')
+lines(c(250, 275), c((1-MCI_societal_discounted_prob)[5], mean((1-MCI_societal_discounted_prob)[5:6])), lty=1, col='black')
+lines(c(275, 300), c(mean(tail(1-MCI_societal_discounted_prob, 2)), tail(1-MCI_societal_discounted_prob, 1)), lty=3, col='black')
+points(daly_wtp_vec, MCI_HCS_discounted_prob, pch=20, cex=1.5, col='red')
+lines(daly_wtp_vec, MCI_HCS_discounted_prob, lty=2, col='red')
+points(daly_wtp_vec, (1-MCI_HCS_discounted_prob), pch=17, cex=0.95, col='red')
+lines(daly_wtp_vec, (1-MCI_HCS_discounted_prob), lty=1, col='red')
+legend('left', legend=c("Probability TAU is Optimal (Societal, r=3%)", 
+                        "Probability Lecanemab is Optimal (Societal, r=3%)",
+                        "Probability TAU is Optimal (HCS, r=3%)",
+                        "Probability Lecanemab is Optimal (HCS, r=3%)"), 
+       col=c(rep('black', 2), rep('red', 2)), pch=c(17, 20, 17, 20))
 
 # also want to have a version of the cost without productivity (health care perspective)
 
