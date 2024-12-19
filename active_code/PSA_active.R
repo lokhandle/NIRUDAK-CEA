@@ -435,6 +435,7 @@ ref_nirudak_mean_hosp_costs_vec <- mean_cost_boot_mat[,"mean_hosp_costs_severe_o
 # assume that people lose productive time while severely dehydrated but that would be equally distributed among arms
 # but people would differentially lose productivity if they die (as a result of having Severe dehydration but being treated as Some or None)
 
+# REPLACE WITH ACTUAL VALUE
 mean_annual_wage <- 200000
 
 # discounting will bring down the impact of productivity costs on total costs
@@ -614,8 +615,7 @@ prob_nirudak_optimal_vec_scen_spec_hcs <- colMeans(increm_net_monetary_benefit_s
 
 # also want to have a version of the cost without productivity (health care perspective)
 
-
-
+# Jonah to make into function & add discounting
 
 
 
