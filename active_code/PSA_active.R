@@ -611,7 +611,7 @@ prob_nirudak_optimal_vec_scen_spec_hcs <- colMeans(increm_net_monetary_benefit_s
 
 ####Making the Plot
 # plot cost effectiveness acceptability curve (CEAC) & cost-effectiveness frontier (CEAF)
-
+plot
 
 # also want to have a version of the cost without productivity (health care perspective)
 
