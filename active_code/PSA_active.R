@@ -629,7 +629,7 @@ plot(daly_wtp_vec_usd, prob_nirudak_optimal_vec_ref_all_hcs, ylim=c(0, 1), xlim=
 # the above shows at each WTP, which has the highest probability
 lines(daly_wtp_vec_usd, prob_nirudak_optimal_vec_ref_all_hcs, lty=1, col='black')
 
-
+# to be adapted
 lines(c(275, 300), c(mean(tail(prob_nirudak_optimal_vec_ref_all_hcs, 2)), tail(MCI_societal_discounted_prob, 1)), lty=1, col='black')
 points(daly_wtp_vec, (1-prob_nirudak_optimal_vec_ref_all_hcs), pch=17, cex=0.95, col='black')
 lines(head(daly_wtp_vec, -1), head((1-MCI_societal_discounted_prob), -1), lty=1, col='black')
