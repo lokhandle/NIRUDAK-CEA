@@ -1,7 +1,7 @@
 library(data.table)
 library(gtsummary)
 
-data <- fread("/Users/anaghalokhande/Documents/research_levine/NIRUDAK-CEA_github/patient_demographic_table/table1_data.csv")
+data <- fread("/Users/anaghalokhande/Desktop/research/Levine_NIRUDAK_CEA/old_code/table2_patient_demographics/table2_data.csv")
 
 # creating age_category variable
 data$age_category <- 'blank'
